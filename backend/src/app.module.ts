@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { VideoRequestController } from './presentation/controllers/video-request.controller';
 import { VideoController } from './presentation/controllers/video.controller';
+import { PocController } from './presentation/controllers/poc.controller';
 import { CreateVideoRequestUseCase } from './application/use-cases/create-video-request.use-case';
 import { GetVideoRequestUseCase } from './application/use-cases/get-video-request.use-case';
 import { GetVideoUseCase } from './application/use-cases/get-video.use-case';
@@ -14,6 +15,10 @@ import { FFmpegService } from './infrastructure/ffmpeg/ffmpeg.service';
 import { R2StorageService } from './infrastructure/storage/r2-storage.service';
 import { QueueService } from './infrastructure/queue/queue.service';
 import { VideoRenderProcessor } from './infrastructure/queue/video-render.processor';
+import { PromptRefinementAgent } from './infrastructure/ai/prompt-refinement.agent';
+import { ElementCreationAgent } from './infrastructure/ai/element-creation.agent';
+import { AnimationConfigurationAgent } from './infrastructure/ai/animation-configuration.agent';
+import { HtmlTemplateGenerator } from './infrastructure/rendering/html-template.generator';
 
 @Module({
   imports: [
@@ -31,7 +36,7 @@ import { VideoRenderProcessor } from './infrastructure/queue/video-render.proces
       name: 'video-render',
     }),
   ],
-  controllers: [VideoRequestController, VideoController],
+  controllers: [VideoRequestController, VideoController, PocController],
   providers: [
     // Use Cases
     CreateVideoRequestUseCase,
@@ -46,6 +51,12 @@ import { VideoRenderProcessor } from './infrastructure/queue/video-render.proces
     FFmpegService,
     R2StorageService,
     QueueService,
+    // AI Agents
+    PromptRefinementAgent,
+    ElementCreationAgent,
+    AnimationConfigurationAgent,
+    // Rendering
+    HtmlTemplateGenerator,
     // Processors
     VideoRenderProcessor,
   ],
