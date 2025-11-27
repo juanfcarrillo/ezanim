@@ -15,13 +15,15 @@ export class PromptRefinementAgent {
 
   constructor() {
     this.aiProvider = AIProviderFactory.createFromEnv();
-    
+
     if (this.aiProvider) {
       console.log(
         `[PromptRefinementAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
       );
     } else {
-      console.warn('[PromptRefinementAgent] No AI provider configured, using mock mode');
+      console.warn(
+        '[PromptRefinementAgent] No AI provider configured, using mock mode',
+      );
     }
   }
 
@@ -51,15 +53,21 @@ Respond ONLY with a valid JSON object in this exact format:
 }`;
 
       const text = await this.aiProvider.generateContent(prompt);
-      
+
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.warn('[PromptRefinementAgent] Failed to parse AI response, using mock');
+        console.warn(
+          '[PromptRefinementAgent] Failed to parse AI response, using mock',
+        );
         return this.getMockRefinedPrompt(userPrompt);
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        refined: string;
+        keyPoints: string[];
+        suggestedDuration: number;
+      };
 
       return {
         original: userPrompt,

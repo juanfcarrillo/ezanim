@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { AnimationElement, ElementType } from '@domain/entities/animation-element.entity';
+import {
+  AnimationElement,
+  ElementType,
+} from '@domain/entities/animation-element.entity';
 import { AIProvider } from './providers/ai-provider.interface';
 import { AIProviderFactory } from './providers/ai-provider.factory';
 
@@ -20,7 +23,9 @@ export class ElementCreationAgent {
         `[ElementCreationAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
       );
     } else {
-      console.warn('[ElementCreationAgent] No AI provider configured, using mock mode');
+      console.warn(
+        '[ElementCreationAgent] No AI provider configured, using mock mode',
+      );
     }
   }
 
@@ -32,7 +37,7 @@ export class ElementCreationAgent {
 
     // If no AI provider, use mock data
     if (!this.aiProvider) {
-      return this.getMockElements(videoRequestId, refinedPrompt);
+      return this.getMockElements(videoRequestId);
     }
 
     try {
@@ -98,18 +103,29 @@ Respond ONLY with valid JSON:
 }`;
 
       const text = await this.aiProvider.generateContent(prompt);
-      
+
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.warn('[ElementCreationAgent] Failed to parse AI response, using mock');
-        return this.getMockElements(videoRequestId, refinedPrompt);
+        console.warn(
+          '[ElementCreationAgent] Failed to parse AI response, using mock',
+        );
+        return this.getMockElements(videoRequestId);
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        elements: Array<{
+          type: string;
+          content: string;
+          styles: Record<string, string>;
+          order: number;
+        }>;
+        sceneDescription: string;
+      };
       const elements: AnimationElement[] = [];
 
       for (const elem of parsed.elements) {
-        const elementType = elem.type === 'SHAPE' ? ElementType.SHAPE : ElementType.TEXT;
+        const elementType =
+          elem.type === 'SHAPE' ? ElementType.SHAPE : ElementType.TEXT;
         elements.push(
           AnimationElement.create(
             videoRequestId,
@@ -127,14 +143,11 @@ Respond ONLY with valid JSON:
       };
     } catch (error) {
       console.error('[ElementCreationAgent] AI API error:', error);
-      return this.getMockElements(videoRequestId, refinedPrompt);
+      return this.getMockElements(videoRequestId);
     }
   }
 
-  private getMockElements(
-    videoRequestId: string,
-    _refinedPrompt: string,
-  ): ElementGenerationResult {
+  private getMockElements(videoRequestId: string): ElementGenerationResult {
     const elements: AnimationElement[] = [];
 
     // Main title
@@ -278,7 +291,8 @@ Respond ONLY with valid JSON:
 
     return {
       elements,
-      sceneDescription: 'A cinematic, professional educational video with dramatic reveals and smooth transitions',
+      sceneDescription:
+        'A cinematic, professional educational video with dramatic reveals and smooth transitions',
     };
   }
 }

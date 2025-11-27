@@ -107,11 +107,23 @@ Respond ONLY with valid JSON:
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.warn('[AnimationConfigurationAgent] Failed to parse AI response, using mock');
+        console.warn(
+          '[AnimationConfigurationAgent] Failed to parse AI response, using mock',
+        );
         return this.getMockAnimations(elements);
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        animations: Array<{
+          index: number;
+          duration: number;
+          easing: string;
+          properties: Record<string, unknown>;
+          delay: number;
+          loop: boolean;
+        }>;
+        totalDuration?: number;
+      };
       const animatedElements: AnimationElement[] = [];
 
       for (const anim of parsed.animations) {
@@ -130,7 +142,7 @@ Respond ONLY with valid JSON:
       }
 
       // Add any elements without animations
-      elements.forEach((el, idx) => {
+      elements.forEach((el) => {
         if (!animatedElements.find((ae) => ae.id === el.id)) {
           animatedElements.push(el);
         }
