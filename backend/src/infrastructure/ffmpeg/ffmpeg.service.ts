@@ -81,6 +81,37 @@ export class FFmpegService {
     });
   }
 
+  async mergeAudioVideo(
+    videoPath: string,
+    audioPath: string,
+    outputPath: string,
+  ): Promise<string> {
+    console.log('[FFmpegService] Merging audio and video');
+    return new Promise<string>((resolve, reject) => {
+      ffmpeg()
+        .input(videoPath)
+        .input(audioPath)
+        .outputOptions([
+          '-c:v copy', // Copy video stream without re-encoding
+          '-c:a aac', // Encode audio to AAC
+          '-shortest', // Finish when the shortest stream ends
+        ])
+        .output(outputPath)
+        .on('start', (commandLine) => {
+          console.log('[FFmpegService] Merge command:', commandLine);
+        })
+        .on('end', () => {
+          console.log('[FFmpegService] Merge complete:', outputPath);
+          resolve(outputPath);
+        })
+        .on('error', (err) => {
+          console.error('[FFmpegService] Merge error:', err);
+          reject(err);
+        })
+        .run();
+    });
+  }
+
   async getVideoMetadata(videoPath: string): Promise<VideoMetadata> {
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(videoPath, (err, metadata) => {

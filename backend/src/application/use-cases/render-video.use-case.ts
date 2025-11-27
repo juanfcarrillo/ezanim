@@ -14,6 +14,7 @@ export class RenderVideoUseCase {
     videoRequestId: string,
     htmlContent: string,
     duration: number,
+    audioPath?: string,
   ): Promise<void> {
     const videoRequest = await this.videoRequestRepo.findById(videoRequestId);
 
@@ -33,6 +34,7 @@ export class RenderVideoUseCase {
       videoRequestId,
       htmlContent,
       duration,
+      audioPath,
     });
   }
 }

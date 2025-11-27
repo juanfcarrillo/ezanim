@@ -15,6 +15,14 @@ export class R2StorageService {
   private publicUrl: string;
 
   constructor() {
+    const storageDriver = process.env.STORAGE_DRIVER || 'r2';
+    
+    if (storageDriver === 'local') {
+      console.log('[R2StorageService] Initialized in LOCAL mode');
+      this.bucketName = 'local-storage';
+      return;
+    }
+
     const accountId = process.env.R2_ACCOUNT_ID;
     const accessKeyId = process.env.R2_ACCESS_KEY_ID;
     const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
@@ -37,12 +45,31 @@ export class R2StorageService {
 
     this.bucketName = process.env.R2_BUCKET_NAME || 'ezanim-videos';
     this.publicUrl = process.env.R2_PUBLIC_URL || '';
-
+    
     console.log('[R2StorageService] Initialized with bucket:', this.bucketName);
   }
 
   async uploadVideo(filePath: string, key: string): Promise<string> {
     console.log('[R2StorageService] Uploading video:', key);
+
+    // Local Mode
+    if (process.env.STORAGE_DRIVER === 'local') {
+      try {
+        const localDir = path.join(process.cwd(), 'storage');
+        const destPath = path.join(localDir, key);
+        
+        console.log(`[R2StorageService] Copying from ${filePath} to ${destPath}`);
+        
+        await fs.mkdir(path.dirname(destPath), { recursive: true });
+        await fs.copyFile(filePath, destPath);
+        
+        console.log('[R2StorageService] Local upload complete:', destPath);
+        return key;
+      } catch (error) {
+        console.error('[R2StorageService] Local upload failed:', error);
+        throw error;
+      }
+    }
 
     // Mock mode if client not configured
     if (!this.client) {
@@ -73,6 +100,11 @@ export class R2StorageService {
   }
 
   async getPublicUrl(key: string): Promise<string> {
+    if (process.env.STORAGE_DRIVER === 'local') {
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      return `${baseUrl}/files/${key}`;
+    }
+
     // If public URL is configured, use it
     if (this.publicUrl) {
       return `${this.publicUrl}/${key}`;

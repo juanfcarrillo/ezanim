@@ -14,6 +14,7 @@ export interface VideoRenderJobData {
   videoRequestId: string;
   htmlContent: string;
   duration: number;
+  audioPath?: string;
   configuration?: {
     width: number;
     height: number;
@@ -34,7 +35,8 @@ export class VideoRenderProcessor extends WorkerHost {
   }
 
   async process(job: Job<VideoRenderJobData>): Promise<void> {
-    const { videoRequestId, htmlContent, duration, configuration } = job.data;
+    const { videoRequestId, htmlContent, duration, audioPath, configuration } =
+      job.data;
 
     console.log(
       `[VideoRenderProcessor] Starting job for request: ${videoRequestId}`,
@@ -87,20 +89,49 @@ export class VideoRenderProcessor extends WorkerHost {
         'videos',
       );
       await fs.mkdir(outputDir, { recursive: true });
-      const videoPath = path.join(outputDir, `${videoRequestId}.mp4`);
+      const tempVideoPath = path.join(outputDir, `${videoRequestId}_temp.mp4`);
+      const finalVideoPath = path.join(outputDir, `${videoRequestId}.mp4`);
 
       await this.ffmpegService.encodeVideo({
         framePaths,
-        outputPath: videoPath,
+        outputPath: tempVideoPath,
         fps: config.fps,
         width: config.width,
         height: config.height,
       });
 
+      let videoToUpload = tempVideoPath;
+
+      console.log(`[VideoRenderProcessor] Checking audio path: ${audioPath}`);
+      if (audioPath) {
+        const exists = await this.fileExists(audioPath);
+        console.log(`[VideoRenderProcessor] Audio file exists: ${exists}`);
+        
+        if (exists) {
+          console.log('[VideoRenderProcessor] Merging audio and video...');
+          await this.ffmpegService.mergeAudioVideo(
+            tempVideoPath,
+            audioPath,
+            finalVideoPath,
+          );
+          videoToUpload = finalVideoPath;
+          // Clean up temp video
+          await fs.unlink(tempVideoPath).catch(() => {});
+        } else {
+          console.warn(`[VideoRenderProcessor] Audio file not found at ${audioPath}, skipping merge.`);
+          await fs.rename(tempVideoPath, finalVideoPath);
+          videoToUpload = finalVideoPath;
+        }
+      } else {
+        // Rename temp to final if no audio
+        await fs.rename(tempVideoPath, finalVideoPath);
+        videoToUpload = finalVideoPath;
+      }
+
       console.log('[VideoRenderProcessor] Uploading to R2...');
       await job.updateProgress(85);
       const s3Key = `videos/${videoRequestId}.mp4`;
-      await this.storageService.uploadVideo(videoPath, s3Key);
+      await this.storageService.uploadVideo(videoToUpload, s3Key);
       const videoUrl = await this.storageService.getPublicUrl(s3Key);
 
       const video = Video.create(
@@ -116,7 +147,11 @@ export class VideoRenderProcessor extends WorkerHost {
 
       console.log('[VideoRenderProcessor] Cleaning up temporary files...');
       await this.puppeteerService.cleanup(framePaths);
-      await fs.unlink(videoPath).catch(() => {});
+      await fs.unlink(videoToUpload).catch(() => {});
+      if (audioPath) {
+        // Optional: clean up audio file if it was temp
+        // await fs.unlink(audioPath).catch(() => {});
+      }
 
       // Mark as completed
       await job.updateProgress(100);
@@ -139,6 +174,15 @@ export class VideoRenderProcessor extends WorkerHost {
       }
 
       throw error;
+    }
+  }
+
+  private async fileExists(path: string): Promise<boolean> {
+    try {
+      await fs.access(path);
+      return true;
+    } catch {
+      return false;
     }
   }
 }

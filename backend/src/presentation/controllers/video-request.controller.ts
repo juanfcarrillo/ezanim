@@ -12,6 +12,12 @@ import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-an
 import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
 import { GenerateScriptAndAudioUseCase } from '@application/use-cases/generate-script-and-audio.use-case';
+import { GenerateVideoFromScriptUseCase } from '@application/use-cases/generate-video-from-script.use-case';
+import { ElevenLabsService } from '../../infrastructure/elevenlabs/elevenlabs.service';
+import { TranscriptionService } from '../../infrastructure/transcription/transcription.service';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 
 @Controller('video-requests')
 export class VideoRequestController {
@@ -20,7 +26,74 @@ export class VideoRequestController {
     private readonly renderVideoUseCase: RenderVideoUseCase,
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
     private readonly generateScriptAndAudioUseCase: GenerateScriptAndAudioUseCase,
+    private readonly generateVideoFromScriptUseCase: GenerateVideoFromScriptUseCase,
+    private readonly elevenLabsService: ElevenLabsService,
+    private readonly transcriptionService: TranscriptionService,
   ) {}
+
+  @Post('create-from-mock')
+  async createFromMock() {
+    // 1. Read Mock File
+    const mockFilePath = path.join(
+      process.cwd(),
+      '../samples/facade-pattern/parametters.txt',
+    );
+    const content = fs.readFileSync(mockFilePath, 'utf-8');
+
+    // 2. Parse Content
+    const requestMatch = content.match(/Request: (.*)/);
+    const scriptMatch = content.match(/Elevenlabs script: ([\s\S]*)/);
+
+    if (!requestMatch || !scriptMatch) {
+      throw new Error('Invalid mock file format');
+    }
+
+    const initialRequest = requestMatch[1].trim();
+    const script = scriptMatch[1].trim();
+
+    // 3. Generate Audio
+    console.log('Generating audio from mock script...');
+    const audioBuffer = await this.elevenLabsService.generateAudio(script);
+
+    // Save audio to temp file for rendering later
+    const audioDir = path.join(
+      process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
+      'audio',
+    );
+    if (!fs.existsSync(audioDir)) {
+      fs.mkdirSync(audioDir, { recursive: true });
+    }
+    const requestId = crypto.randomUUID();
+    const audioPath = path.join(audioDir, `${requestId}.mp3`);
+    fs.writeFileSync(audioPath, audioBuffer);
+
+    // 4. Transcribe
+    console.log('Transcribing audio...');
+    const { vtt, words } =
+      await this.transcriptionService.transcribeAudio(audioBuffer);
+
+    // Calculate duration from words or audio file (approx)
+    const duration =
+      words.length > 0 ? words[words.length - 1].end + 2 : 30; // Add buffer
+
+    // 5. Execute Phase 2
+    console.log('Executing Phase 2...');
+    await this.generateVideoFromScriptUseCase.execute({
+      requestId,
+      initialRequest,
+      script,
+      audioPath,
+      vtt,
+      duration,
+    });
+
+    return {
+      message: 'Video creation started from mock',
+      requestId,
+      initialRequest,
+      script,
+    };
+  }
 
   @Post('generate-script-audio')
   async generateScriptAudio(@Body() body: { prompt: string }) {

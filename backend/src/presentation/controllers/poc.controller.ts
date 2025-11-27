@@ -3,6 +3,8 @@ import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-an
 import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
 import { GetVideoUseCase } from '@application/use-cases/get-video.use-case';
+import { GenerateVideoFromScriptUseCase } from '@application/use-cases/generate-video-from-script.use-case';
+import { v4 as uuidv4 } from 'uuid';
 
 @Controller('poc')
 export class PocController {
@@ -11,7 +13,91 @@ export class PocController {
     private readonly renderVideoUseCase: RenderVideoUseCase,
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
     private readonly getVideoUseCase: GetVideoUseCase,
+    private readonly generateVideoFromScriptUseCase: GenerateVideoFromScriptUseCase,
   ) {}
+
+  @Post('test-script-video')
+  async testScriptVideo(@Body() body: { 
+    prompt: string; 
+    script: string; 
+    vtt: string;
+    duration?: number;
+    audioPath?: string;
+  }) {
+    const requestId = uuidv4();
+    console.log('='.repeat(60));
+    console.log('🎬 POC - Starting Script-to-Video Test');
+    console.log('='.repeat(60));
+    console.log('Request ID:', requestId);
+    console.log('Prompt:', body.prompt);
+
+    // Estimate duration from script length if not provided (rough approx)
+    // or default to 20s
+    const duration = body.duration || 20;
+
+    await this.generateVideoFromScriptUseCase.execute({
+      requestId,
+      initialRequest: body.prompt,
+      script: body.script,
+      vtt: body.vtt,
+      audioPath: body.audioPath || '/tmp/ezanim/mock-audio.mp3', // Use provided path or default
+      duration,
+    });
+
+    return {
+      success: true,
+      requestId,
+      message: 'Video generation from script started. HTML will be ready for preview soon.',
+      endpoints: {
+        status: `/poc/status/${requestId}`,
+        preview: `/poc/preview/${requestId}`,
+        render: `/poc/render/${requestId}`,
+      },
+    };
+  }
+
+  @Get('preview/:requestId')
+  async previewHtml(@Param('requestId') requestId: string) {
+    try {
+      const videoRequest = await this.getVideoRequestUseCase.execute(requestId);
+      
+      if (!videoRequest.htmlContent) {
+        return `<html><body><h1>Preview not ready</h1><p>Status: ${videoRequest.status}</p></body></html>`;
+      }
+
+      return videoRequest.htmlContent;
+    } catch (error) {
+      return `<html><body><h1>Error</h1><p>${error.message}</p></body></html>`;
+    }
+  }
+
+  @Post('render/:requestId')
+  async triggerRender(@Param('requestId') requestId: string) {
+    try {
+      const videoRequest = await this.getVideoRequestUseCase.execute(requestId);
+
+      if (!videoRequest.htmlContent) {
+        return { success: false, message: 'HTML content not generated yet.' };
+      }
+
+      console.log(`[PocController] Triggering render for ${requestId}`);
+      
+      await this.renderVideoUseCase.execute(
+        requestId,
+        videoRequest.htmlContent,
+        videoRequest.duration || 15,
+        videoRequest.audioPath || undefined,
+      );
+
+      return { 
+        success: true, 
+        message: 'Rendering started',
+        statusEndpoint: `/poc/status/${requestId}`
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 
   @Post('test-video')
   async testVideoCreation(@Body() body: { prompt?: string }) {

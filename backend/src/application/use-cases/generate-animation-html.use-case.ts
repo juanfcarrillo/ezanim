@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { VideoRequest } from '@domain/entities/video-request.entity';
 import { InMemoryVideoRequestRepository } from '@infrastructure/repositories/in-memory-video-request.repository';
-import { VideoAnimationAgent } from '@infrastructure/ai/video-animation.agent';
+import { VideoCreatorAgent } from '@infrastructure/ai/video-creator.agent';
 import { VideoRequestStatus } from '@domain/entities/video-request.entity';
 
 @Injectable()
 export class GenerateAnimationHtmlUseCase {
   constructor(
     private readonly videoRequestRepo: InMemoryVideoRequestRepository,
-    private readonly videoAnimationAgent: VideoAnimationAgent,
+    private readonly videoCreatorAgent: VideoCreatorAgent,
   ) {}
 
   async execute(userPrompt: string): Promise<{
@@ -26,15 +26,12 @@ export class GenerateAnimationHtmlUseCase {
       videoRequest.id,
     );
 
-    const animationResult =
-      await this.videoAnimationAgent.generateVideoAnimation(userPrompt);
+    const htmlContent = await this.videoCreatorAgent.createVideo(userPrompt);
+    const duration = 15; // Default duration
 
-    let updatedRequest = videoRequest.updateRefinedPrompt(
-      animationResult.description,
-    );
-    updatedRequest = updatedRequest.updateStatus(
-      VideoRequestStatus.PREVIEW_READY,
-    );
+    let updatedRequest = videoRequest.updateRefinedPrompt(userPrompt);
+    updatedRequest = updatedRequest.updateHtmlContent(htmlContent);
+    updatedRequest = updatedRequest.updateStatus(VideoRequestStatus.PREVIEW_READY);
 
     await this.videoRequestRepo.update(updatedRequest);
 
@@ -45,9 +42,9 @@ export class GenerateAnimationHtmlUseCase {
 
     return {
       id: videoRequest.id,
-      htmlContent: animationResult.htmlContent,
-      duration: animationResult.duration,
-      description: animationResult.description,
+      htmlContent: htmlContent,
+      duration: duration,
+      description: userPrompt,
     };
   }
 }

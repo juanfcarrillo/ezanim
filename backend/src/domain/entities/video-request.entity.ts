@@ -3,6 +3,9 @@ export class VideoRequest {
     public readonly id: string,
     public readonly userPrompt: string,
     public readonly refinedPrompt: string | null,
+    public readonly htmlContent: string | null,
+    public readonly audioPath: string | null,
+    public readonly duration: number | null,
     public readonly status: VideoRequestStatus,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
@@ -12,6 +15,9 @@ export class VideoRequest {
     return new VideoRequest(
       crypto.randomUUID(),
       userPrompt,
+      null,
+      null,
+      null,
       null,
       VideoRequestStatus.PENDING,
       new Date(),
@@ -24,6 +30,9 @@ export class VideoRequest {
       this.id,
       this.userPrompt,
       this.refinedPrompt,
+      this.htmlContent,
+      this.audioPath,
+      this.duration,
       status,
       this.createdAt,
       new Date(),
@@ -35,6 +44,37 @@ export class VideoRequest {
       this.id,
       this.userPrompt,
       refinedPrompt,
+      this.htmlContent,
+      this.audioPath,
+      this.duration,
+      this.status,
+      this.createdAt,
+      new Date(),
+    );
+  }
+
+  updateHtmlContent(htmlContent: string): VideoRequest {
+    return new VideoRequest(
+      this.id,
+      this.userPrompt,
+      this.refinedPrompt,
+      htmlContent,
+      this.audioPath,
+      this.duration,
+      this.status,
+      this.createdAt,
+      new Date(),
+    );
+  }
+
+  updateAudioAndDuration(audioPath: string, duration: number): VideoRequest {
+    return new VideoRequest(
+      this.id,
+      this.userPrompt,
+      this.refinedPrompt,
+      this.htmlContent,
+      audioPath,
+      duration,
       this.status,
       this.createdAt,
       new Date(),

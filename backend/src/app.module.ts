@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { VideoRequestController } from './presentation/controllers/video-request.controller';
 import { VideoController } from './presentation/controllers/video.controller';
 import { PocController } from './presentation/controllers/poc.controller';
+import { FilesController } from './presentation/controllers/files.controller';
 import { GenerateAnimationHtmlUseCase } from './application/use-cases/generate-animation-html.use-case';
 import { RenderVideoUseCase } from './application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from './application/use-cases/get-video-request.use-case';
@@ -16,11 +17,12 @@ import { FFmpegService } from './infrastructure/ffmpeg/ffmpeg.service';
 import { R2StorageService } from './infrastructure/storage/r2-storage.service';
 import { QueueService } from './infrastructure/queue/queue.service';
 import { VideoRenderProcessor } from './infrastructure/queue/video-render.processor';
-import { VideoAnimationAgent } from './infrastructure/ai/video-animation.agent';
+import { VideoCreatorAgent } from './infrastructure/ai/video-creator.agent';
 import { ScriptGenerationAgent } from './infrastructure/ai/script-generation.agent';
 import { ElevenLabsService } from './infrastructure/elevenlabs/elevenlabs.service';
 import { TranscriptionService } from './infrastructure/transcription/transcription.service';
 import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-script-and-audio.use-case';
+import { GenerateVideoFromScriptUseCase } from './application/use-cases/generate-video-from-script.use-case';
 
 @Module({
   imports: [
@@ -38,7 +40,7 @@ import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-
       name: 'video-render',
     }),
   ],
-  controllers: [VideoRequestController, VideoController, PocController],
+  controllers: [VideoRequestController, VideoController, PocController, FilesController],
   providers: [
     // Use Cases
     GenerateAnimationHtmlUseCase,
@@ -46,6 +48,7 @@ import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-
     GetVideoRequestUseCase,
     GetVideoUseCase,
     GenerateScriptAndAudioUseCase,
+    GenerateVideoFromScriptUseCase,
     // Repositories
     InMemoryVideoRequestRepository,
     InMemoryAnimationElementRepository,
@@ -58,7 +61,7 @@ import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-
     ElevenLabsService,
     TranscriptionService,
     // AI Agent
-    VideoAnimationAgent,
+    VideoCreatorAgent,
     ScriptGenerationAgent,
     // Processors
     VideoRenderProcessor,

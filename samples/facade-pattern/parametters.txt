@@ -1,24 +1,57 @@
 Request: explica el patron fachada
-Elevenlabs script: Hola. <break time="0.8s" />
+Elevenlabs script: Pedir un café debería ser simple. <break time="0.5s" />
 
-Imagínate por un momento que entras a una cafetería. Tienes sueño, y lo único que quieres es un café bien caliente. 
+Pero... imagina si para conseguirlo tuvieras que entrar a la cocina, moler el grano y calentar el agua tú mismo. Agotador... ¿verdad? <break time="0.8s" />
 
-Pero... <break time="0.5s" /> imagina que no hay meseros, ni cajeros.
+En programación, el Patrón Fachada es la solución. <break time="0.4s" /> Piénsalo como el barista de tu cafetería favorita.
 
-Para conseguir tu café, tienes que entrar a la cocina y hacerlo todo tú mismo. Tienes que moler el grano, calentar el agua a 90 grados, prensar el filtro... y luego, limpiar la máquina. <break time="1.0s" />
+Tú no necesitas saber cómo funciona la máquina de espresso. Tú solo pides "un café", y el barista se encarga de todo el lío técnico detrás. <break time="0.8s" />
 
-Es agotador, ¿verdad? Demasiados pasos complejos para algo tan simple como "querer un café".
+La Fachada hace exactamente eso: te da una "cara amable" y sencilla para ocultar un sistema complejo.
 
-Bueno, en el mundo de la programación, a veces tenemos sistemas igual de complicados. Cientos de clases y funciones que necesitan conectarse en un orden perfecto para que algo funcione.
+Así que, para un código más limpio y feliz... <break time="0.4s" /> usa una Fachada.
 
-Aquí es donde entra nuestro héroe de hoy: <break time="0.6s" /> El Patrón Fachada.
+VTT transcript: WEBVTT
 
-El Patrón Fachada es... como el barista de esa cafetería.
+00:00:00.160 --> 00:00:03.600
+Pedir un café debería ser simple, pero imagina
 
-Tú no necesitas saber cómo funciona la máquina por dentro. Tú simplemente le dices al barista: "Quiero un café". Y él se encarga de todo el lío que ocurre detrás. <break time="1.2s" />
+00:00:03.600 --> 00:00:05.520
+si para conseguirlo tuvieras que entrar a
 
-En tu código, la "Fachada" es una clase simple que esconde la complejidad de un sistema grande. Te da un botón sencillo para pulsar, mientras ella se encarga de conectar los cables difíciles en el fondo.
+00:00:05.520 --> 00:00:08.200
+la cocina, moler el grano y calentar el agua
 
-Así que, la próxima vez que veas un código difícil de usar... ponle un "barista" enfrente. Úsalo para simplificar la vida de quien use tu código.
+00:00:08.200 --> 00:00:12.720
+tú mismo. Agotador, ¿Verdad? En programación,
 
-Hazlo simple. <break time="0.3s" /> Usa una Fachada.
+00:00:12.720 --> 00:00:15.760
+el patrón fachada es la solución. Piénsalo
+
+00:00:15.760 --> 00:00:17.760
+como el barista de tu cafetería favorita.
+
+00:00:18.080 --> 00:00:20.360
+Tú no necesitas saber cómo funciona la máquina
+
+00:00:20.360 --> 00:00:21.240
+de espresso.
+
+00:00:21.240 --> 00:00:24.160
+Tú solo pides un café y el barista se encarga
+
+00:00:24.160 --> 00:00:27.600
+de todo el lío técnico detrás. La fachada
+
+00:00:27.600 --> 00:00:30.640
+hace exactamente eso, te da una cara amable
+
+00:00:30.640 --> 00:00:33.080
+y sencilla para ocultar un sistema complejo.
+
+00:00:33.160 --> 00:00:35.400
+Así que para un código más limpio y feliz,
+
+00:00:35.640 --> 00:00:36.760
+usa una fachada.
+

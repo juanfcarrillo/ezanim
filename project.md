@@ -15,10 +15,12 @@ Ezanim is a engine for creating videos with ai, specially for explanatory videos
 ### Phase 2
 
 1. The ai receives the transcript, the timestamps in VTT format and the initial user request.
-2. The ai process it in 3 stages:
-   1. The ai improves the text prompt and makes it more clear and refines it.
-   2. The ai creates the elements of the video, like which elements will be animated and should appear as main characters. This elements could be html styles with css, images, vectors, etc.
-   3. The ai animates the elements to be consistent with the request of the user.
+2. The ai processes it using a **single specialized agent** acting as an expert frontend developer and creative animator.
+   - This agent generates a single, self-contained HTML file with all CSS and JS included.
+   - **Libraries**: Uses Anime.js (v3.2.1) for animations and FontAwesome (v6.4.0) for icons.
+   - **Visual Structure**: Creates a modern video player UI with Play/Pause controls, progress bar, and time indicator.
+   - **Animation Logic**: Uses `anime.timeline()` to sequence the story, employing dynamic entrances (bounce effects) and micro-interactions (staggering) for a professional look.
+   - **Output**: A complete, runnable HTML file ready for rendering.
 3. The preview of the video is shown to the user.
 4. The ai renders the video in a headless browser (Google Chrome) and saves it as an .mp4 file.
 5. The video and audio are merged into a single file.
