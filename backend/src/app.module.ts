@@ -15,10 +15,7 @@ import { FFmpegService } from './infrastructure/ffmpeg/ffmpeg.service';
 import { R2StorageService } from './infrastructure/storage/r2-storage.service';
 import { QueueService } from './infrastructure/queue/queue.service';
 import { VideoRenderProcessor } from './infrastructure/queue/video-render.processor';
-import { PromptRefinementAgent } from './infrastructure/ai/prompt-refinement.agent';
-import { ElementCreationAgent } from './infrastructure/ai/element-creation.agent';
-import { AnimationConfigurationAgent } from './infrastructure/ai/animation-configuration.agent';
-import { HtmlTemplateGenerator } from './infrastructure/rendering/html-template.generator';
+import { VideoAnimationAgent } from './infrastructure/ai/video-animation.agent';
 
 @Module({
   imports: [
@@ -51,12 +48,8 @@ import { HtmlTemplateGenerator } from './infrastructure/rendering/html-template.
     FFmpegService,
     R2StorageService,
     QueueService,
-    // AI Agents
-    PromptRefinementAgent,
-    ElementCreationAgent,
-    AnimationConfigurationAgent,
-    // Rendering
-    HtmlTemplateGenerator,
+    // AI Agent
+    VideoAnimationAgent,
     // Processors
     VideoRenderProcessor,
   ],
