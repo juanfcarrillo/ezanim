@@ -31,6 +31,61 @@ export class VideoRequestController {
     private readonly transcriptionService: TranscriptionService,
   ) {}
 
+  @Post('create-full')
+  async createFullVideo(@Body() body: { prompt: string }) {
+    console.log(`[VideoRequestController] Starting full video creation for: "${body.prompt}"`);
+    
+    // 1. Phase 1: Generate Script, Audio, and Transcription
+    const phase1Result = await this.generateScriptAndAudioUseCase.execute(body.prompt);
+    
+    // Save audio to temp file
+    const audioDir = path.join(
+      process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
+      'audio',
+    );
+    if (!fs.existsSync(audioDir)) {
+      fs.mkdirSync(audioDir, { recursive: true });
+    }
+    
+    const requestId = crypto.randomUUID();
+    const audioPath = path.join(audioDir, `${requestId}.mp3`);
+    fs.writeFileSync(audioPath, phase1Result.audioBuffer);
+    
+    console.log(`[VideoRequestController] Audio saved to: ${audioPath}`);
+
+    // Calculate duration
+    const duration = phase1Result.words.length > 0 
+      ? phase1Result.words[phase1Result.words.length - 1].end + 2 
+      : 20; // Default fallback
+
+    // 2. Phase 2: Generate Video HTML and Prepare for Render
+    await this.generateVideoFromScriptUseCase.execute({
+      requestId,
+      initialRequest: body.prompt,
+      script: phase1Result.script,
+      audioPath,
+      vtt: phase1Result.vtt,
+      duration,
+    });
+
+    return {
+      success: true,
+      requestId,
+      message: 'Full video creation pipeline started',
+      data: {
+        prompt: body.prompt,
+        script: phase1Result.script,
+        duration,
+        audioPath
+      },
+      endpoints: {
+        status: `/poc/status/${requestId}`,
+        preview: `/poc/preview/${requestId}`,
+        render: `/poc/render/${requestId}`,
+      }
+    };
+  }
+
   @Post('create-from-mock')
   async createFromMock() {
     // 1. Read Mock File
