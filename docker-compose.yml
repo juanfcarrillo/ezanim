@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Redis for BullMQ queue management
+  redis:
+    image: redis:7-alpine
+    container_name: ezanim-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API and Worker
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ezanim-backend
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - VIDEO_WIDTH=1920
+      - VIDEO_HEIGHT=1080
+      - VIDEO_FPS=60
+      - VIDEO_OUTPUT_DIR=/tmp/ezanim
+      - PUPPETEER_HEADLESS=true
+    volumes:
+      - video-temp:/tmp/ezanim
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  video-temp:
