@@ -2,7 +2,6 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { InMemoryVideoRequestRepository } from '../repositories/in-memory-video-request.repository';
 import { InMemoryVideoRepository } from '../repositories/in-memory-video.repository';
-import { VideoAnimationAgent } from '../ai/video-animation.agent';
 import { PuppeteerService } from '../puppeteer/puppeteer.service';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
 import { R2StorageService } from '../storage/r2-storage.service';
@@ -13,12 +12,12 @@ import * as fs from 'fs/promises';
 
 export interface VideoRenderJobData {
   videoRequestId: string;
-  userPrompt: string;
+  htmlContent: string;
+  duration: number;
   configuration?: {
     width: number;
     height: number;
     fps: number;
-    duration: number;
   };
 }
 
@@ -27,7 +26,6 @@ export class VideoRenderProcessor extends WorkerHost {
   constructor(
     private readonly videoRequestRepo: InMemoryVideoRequestRepository,
     private readonly videoRepo: InMemoryVideoRepository,
-    private readonly videoAnimationAgent: VideoAnimationAgent,
     private readonly puppeteerService: PuppeteerService,
     private readonly ffmpegService: FFmpegService,
     private readonly storageService: R2StorageService,
@@ -36,37 +34,19 @@ export class VideoRenderProcessor extends WorkerHost {
   }
 
   async process(job: Job<VideoRenderJobData>): Promise<void> {
-    const { videoRequestId, userPrompt, configuration } = job.data;
+    const { videoRequestId, htmlContent, duration, configuration } = job.data;
 
     console.log(
       `[VideoRenderProcessor] Starting job for request: ${videoRequestId}`,
     );
 
     try {
-      // Get video request
       let videoRequest = await this.videoRequestRepo.findById(videoRequestId);
       if (!videoRequest) {
         throw new Error(`VideoRequest ${videoRequestId} not found`);
       }
 
-      // Stage 1: Generate Complete Video Animation
-      await job.updateProgress(20);
-      videoRequest = videoRequest.updateStatus(
-        VideoRequestStatus.REFINING_PROMPT,
-      );
-      await this.videoRequestRepo.update(videoRequest);
-
-      console.log('[Stage 1] Generating complete video animation with AI...');
-      const animationResult =
-        await this.videoAnimationAgent.generateVideoAnimation(userPrompt);
-
-      videoRequest = videoRequest.updateRefinedPrompt(
-        animationResult.description,
-      );
-      await this.videoRequestRepo.update(videoRequest);
-
-      // Stage 2: Rendering
-      await job.updateProgress(50);
+      await job.updateProgress(10);
       videoRequest = videoRequest.updateStatus(VideoRequestStatus.RENDERING);
       await this.videoRequestRepo.update(videoRequest);
 
@@ -74,13 +54,11 @@ export class VideoRenderProcessor extends WorkerHost {
         width: parseInt(process.env.VIDEO_WIDTH || '1920'),
         height: parseInt(process.env.VIDEO_HEIGHT || '1080'),
         fps: parseInt(process.env.VIDEO_FPS || '60'),
-        duration: animationResult.duration,
       };
 
-      console.log('[Stage 2] Using generated HTML...');
-      const html = animationResult.htmlContent;
+      console.log('[VideoRenderProcessor] Using provided HTML...');
+      const html = htmlContent;
 
-      // Save HTML for debugging
       const debugDir = path.join(
         process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
         'debug',
@@ -88,17 +66,22 @@ export class VideoRenderProcessor extends WorkerHost {
       await fs.mkdir(debugDir, { recursive: true });
       const htmlPath = path.join(debugDir, `${videoRequestId}.html`);
       await fs.writeFile(htmlPath, html, 'utf-8');
-      console.log(`[Stage 2] HTML saved for debugging: ${htmlPath}`);
+      console.log(
+        `[VideoRenderProcessor] HTML saved for debugging: ${htmlPath}`,
+      );
 
-      console.log('[Stage 2] Rendering frames with Puppeteer...');
-      await job.updateProgress(60);
+      console.log('[VideoRenderProcessor] Rendering frames with Puppeteer...');
+      await job.updateProgress(40);
       const framePaths = await this.puppeteerService.renderFrames({
         html,
-        ...config,
+        width: config.width,
+        height: config.height,
+        fps: config.fps,
+        duration,
       });
 
-      console.log('[Stage 2] Encoding video with FFmpeg...');
-      await job.updateProgress(75);
+      console.log('[VideoRenderProcessor] Encoding video with FFmpeg...');
+      await job.updateProgress(70);
       const outputDir = path.join(
         process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
         'videos',
@@ -114,26 +97,24 @@ export class VideoRenderProcessor extends WorkerHost {
         height: config.height,
       });
 
-      console.log('[Stage 2] Uploading to R2...');
-      await job.updateProgress(90);
+      console.log('[VideoRenderProcessor] Uploading to R2...');
+      await job.updateProgress(85);
       const s3Key = `videos/${videoRequestId}.mp4`;
       await this.storageService.uploadVideo(videoPath, s3Key);
       const videoUrl = await this.storageService.getPublicUrl(s3Key);
 
-      // Create Video entity
       const video = Video.create(
         videoRequestId,
         videoUrl,
         s3Key,
-        config.duration,
+        duration,
         config.width,
         config.height,
         config.fps,
       );
       await this.videoRepo.save(video);
 
-      // Cleanup
-      console.log('[Stage 2] Cleaning up temporary files...');
+      console.log('[VideoRenderProcessor] Cleaning up temporary files...');
       await this.puppeteerService.cleanup(framePaths);
       await fs.unlink(videoPath).catch(() => {});
 

@@ -8,22 +8,37 @@ import {
 } from '@nestjs/common';
 import { CreateVideoRequestDto } from '@application/dtos/create-video-request.dto';
 import { VideoRequestResponseDto } from '@application/dtos/video-request-response.dto';
-import { CreateVideoRequestUseCase } from '@application/use-cases/create-video-request.use-case';
+import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-animation-html.use-case';
+import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
 
 @Controller('video-requests')
 export class VideoRequestController {
   constructor(
-    private readonly createVideoRequestUseCase: CreateVideoRequestUseCase,
+    private readonly generateAnimationHtmlUseCase: GenerateAnimationHtmlUseCase,
+    private readonly renderVideoUseCase: RenderVideoUseCase,
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
   ) {}
 
-  @Post()
-  async create(
+  @Post('generate')
+  async generate(
     @Body(new ValidationPipe()) dto: CreateVideoRequestDto,
-  ): Promise<{ id: string }> {
-    const id = await this.createVideoRequestUseCase.execute(dto.userPrompt);
-    return { id };
+  ): Promise<{
+    id: string;
+    htmlContent: string;
+    duration: number;
+    description: string;
+  }> {
+    return await this.generateAnimationHtmlUseCase.execute(dto.userPrompt);
+  }
+
+  @Post(':id/render')
+  async render(
+    @Param('id') id: string,
+    @Body() body: { htmlContent: string; duration: number },
+  ): Promise<{ message: string }> {
+    await this.renderVideoUseCase.execute(id, body.htmlContent, body.duration);
+    return { message: 'Video rendering started' };
   }
 
   @Get(':id')

@@ -1,21 +1,22 @@
 import { Controller, Post, Get, Body, Param } from '@nestjs/common';
-import { CreateVideoRequestUseCase } from '@application/use-cases/create-video-request.use-case';
+import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-animation-html.use-case';
+import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
 import { GetVideoUseCase } from '@application/use-cases/get-video.use-case';
-import { QueueService } from '@infrastructure/queue/queue.service';
 
 @Controller('poc')
 export class PocController {
   constructor(
-    private readonly createVideoRequestUseCase: CreateVideoRequestUseCase,
+    private readonly generateAnimationHtmlUseCase: GenerateAnimationHtmlUseCase,
+    private readonly renderVideoUseCase: RenderVideoUseCase,
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
     private readonly getVideoUseCase: GetVideoUseCase,
-    private readonly queueService: QueueService,
   ) {}
 
   @Post('test-video')
   async testVideoCreation(@Body() body: { prompt?: string }) {
-    const prompt = body.prompt || 'Create an animated video explaining photosynthesis';
+    const prompt =
+      body.prompt || 'Create an animated video explaining photosynthesis';
 
     console.log('='.repeat(60));
     console.log('🎬 PROOF OF CONCEPT - Starting Video Creation Test');
@@ -23,24 +24,32 @@ export class PocController {
     console.log('Prompt:', prompt);
     console.log('');
 
-    // Create video request
-    const videoRequestId = await this.createVideoRequestUseCase.execute(prompt);
+    const result = await this.generateAnimationHtmlUseCase.execute(prompt);
 
-    console.log('✅ Video request created:', videoRequestId);
+    console.log('✅ HTML generated:', result.id);
+    console.log('');
+    console.log('🎬 Auto-rendering video...');
+
+    await this.renderVideoUseCase.execute(
+      result.id,
+      result.htmlContent,
+      result.duration,
+    );
+
+    console.log('✅ Video rendering started');
     console.log('');
     console.log('📝 You can track the progress using:');
-    console.log(`   GET /poc/status/${videoRequestId}`);
-    console.log(`   GET /poc/video/${videoRequestId}`);
+    console.log(`   GET /poc/status/${result.id}`);
+    console.log(`   GET /poc/video/${result.id}`);
     console.log('');
 
     return {
       success: true,
-      videoRequestId,
+      videoRequestId: result.id,
       message: 'Video rendering started. Check status endpoint for progress.',
       endpoints: {
-        status: `/poc/status/${videoRequestId}`,
-        video: `/poc/video/${videoRequestId}`,
-        jobStatus: `/poc/job-status/${videoRequestId}`,
+        status: `/poc/status/${result.id}`,
+        video: `/poc/video/${result.id}`,
       },
     };
   }
@@ -123,10 +132,9 @@ export class PocController {
 
   private getStatusInfo(status: string): string {
     const statusMap = {
-      PENDING: '⏳ Waiting in queue...',
-      REFINING_PROMPT: '🤖 AI is refining your prompt...',
-      CREATING_ELEMENTS: '🎨 AI is creating visual elements...',
-      ANIMATING: '✨ AI is configuring animations...',
+      PENDING: '⏳ Waiting...',
+      GENERATING_HTML: '🤖 AI is generating animation HTML...',
+      PREVIEW_READY: '👀 Preview ready for review',
       RENDERING: '🎬 Rendering video (capturing frames & encoding)...',
       COMPLETED: '✅ Video is ready!',
       FAILED: '❌ Something went wrong',

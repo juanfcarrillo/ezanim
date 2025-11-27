@@ -48,14 +48,12 @@ Strict Technical Requirements:
    - Use Anime.js (v3.2.1 via CDN) for all animations: https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js
    - Use FontAwesome (v6.4.0 via CDN) for icons: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css
 
-3. Visual Structure (Video Player Style):
-   - Create a main container that looks like a modern video player (rounded corners, soft shadow, dark mode aesthetic)
-   - UI: It must have a control bar at the bottom with:
-     * A Play/Pause button (toggles icon between fa-play and fa-pause)
-     * A progress bar that fills up as the animation plays
-     * A time indicator (e.g., 00:00 / 00:15)
-   - Stage: A central area (div.stage-center) where the action happens, using absolute positioning for elements
-   - Subtitles: A section at the bottom to display explanatory text that changes per scene
+3. Visual Structure (Full Screen):
+   - The animation should cover the entire viewport (100vw x 100vh) with no borders or containers
+   - Dark background that fills the screen
+   - All animated elements should be positioned absolutely within the full screen space
+   - Optionally include subtitle text that appears/disappears during the animation
+   - NO video player controls, NO progress bar, NO buttons - just the pure animation
 
 4. Animation Style:
    - Use anime.timeline() to sequence the entire story
@@ -72,15 +70,16 @@ Strict Technical Requirements:
 
 6. Code Logic:
    - Create the anime.js timeline and expose it globally as window.tl for external control
-   - Ensure the Play/Pause button controls the timeline (tl.play(), tl.pause())
-   - Synchronize the progress bar width with the timeline's progress
-   - Update time indicator based on timeline progress
-   - Set autoplay to false on the timeline
+   - Set autoplay to false on the timeline (it will be controlled externally)
+   - The timeline should contain all animations sequenced properly
    - The code must be complete, copy-pasteable, and runnable
+   - Body should have margin: 0 and overflow: hidden to ensure full screen coverage
 
 7. Style Guidelines:
-   - Professional shadows and rounded corners
-   - Responsive design that looks good in a 1920x1080 viewport
+   - Full screen (100vw x 100vh) with no margins or padding on body
+   - Professional shadows and glowing effects on elements
+   - Designed for 1920x1080 viewport but should fill whatever space is given
+   - Body should have overflow: hidden to prevent scrollbars
 
 8. CRITICAL: DO NOT include ANY comments in the HTML, CSS, or JavaScript code. No HTML comments (<!-- -->), no CSS comments (/* */), and no JavaScript comments (// or /* */). The code must be clean and comment-free.
 
@@ -149,132 +148,47 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: var(--bg-dark);
+      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 50%, var(--bg-light) 100%);
       color: var(--text-light);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .video-player {
-      width: 100%;
-      max-width: 1200px;
-      background: var(--bg-medium);
-      border-radius: 20px;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    }
-
-    .stage-center {
       position: relative;
-      width: 100%;
-      height: 600px;
-      background: linear-gradient(135deg, var(--bg-medium) 0%, var(--bg-light) 100%);
-      overflow: hidden;
     }
 
-    .subtitle-area {
-      padding: 20px;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.3);
-      min-height: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .subtitle-text {
-      font-size: 20px;
-      font-weight: 300;
-      color: var(--text-light);
-      opacity: 0;
-    }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      padding: 15px 20px;
-      background: rgba(0, 0, 0, 0.4);
-    }
-
-    .play-btn {
-      width: 45px;
-      height: 45px;
-      border-radius: 50%;
-      background: var(--primary);
-      border: none;
-      color: white;
-      font-size: 18px;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .play-btn:hover {
-      background: #0769c5;
-      transform: scale(1.05);
-    }
-
-    .progress-container {
-      flex: 1;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      overflow: hidden;
-      cursor: pointer;
-    }
-
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: var(--primary);
-      border-radius: 4px;
-      transition: width 0.1s linear;
-    }
-
-    .time-display {
-      font-size: 14px;
-      color: var(--text-muted);
-      font-family: monospace;
-      min-width: 100px;
-    }
-
-    /* Animation Elements */
     .element {
       position: absolute;
       opacity: 0;
     }
 
     .title-main {
-      top: 15%;
+      top: 20%;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 64px;
+      font-size: 72px;
       font-weight: bold;
       text-align: center;
-      width: 80%;
+      width: 90%;
       text-transform: uppercase;
-      letter-spacing: 3px;
-      text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      letter-spacing: 4px;
+      text-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
       color: var(--text-light);
     }
 
-    .subtitle-element {
-      bottom: 35%;
+    .subtitle-text {
+      position: absolute;
+      bottom: 15%;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 28px;
+      font-size: 32px;
       font-weight: 300;
       text-align: center;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 15px 30px;
-      border-radius: 50px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 20px 40px;
+      border-radius: 60px;
       color: var(--text-light);
+      opacity: 0;
+      backdrop-filter: blur(10px);
     }
 
     .icon-element {
@@ -324,63 +238,22 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
   </style>
 </head>
 <body>
-  <div class="video-player">
-    <div class="stage-center">
-      <div class="element title-main">Understanding ${userPrompt}</div>
-      <div class="element subtitle-element">The Problem: Breaking it down</div>
-      <div class="element icon-element icon-left"><i class="fas fa-lightbulb"></i></div>
-      <div class="element shape-circle"></div>
-      <div class="element icon-element icon-center"><i class="fas fa-check-circle"></i></div>
-      <div class="element shape-square"></div>
-      <div class="element icon-element icon-right"><i class="fas fa-rocket"></i></div>
-    </div>
-    
-    <div class="subtitle-area">
-      <div class="subtitle-text">Welcome to this explanation</div>
-    </div>
-    
-    <div class="controls">
-      <button class="play-btn" id="playBtn">
-        <i class="fas fa-play"></i>
-      </button>
-      <div class="progress-container" id="progressContainer">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-      <div class="time-display">
-        <span id="currentTime">00:00</span> / <span id="totalTime">00:15</span>
-      </div>
-    </div>
-  </div>
+  <div class="element title-main">Understanding ${userPrompt}</div>
+  <div class="subtitle-text">Let's explore this concept together</div>
+  <div class="element icon-element icon-left"><i class="fas fa-lightbulb"></i></div>
+  <div class="element shape-circle"></div>
+  <div class="element icon-element icon-center"><i class="fas fa-check-circle"></i></div>
+  <div class="element shape-square"></div>
+  <div class="element icon-element icon-right"><i class="fas fa-rocket"></i></div>
 
   <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
   <script>
-    const playBtn = document.getElementById('playBtn');
-    const progressBar = document.getElementById('progressBar');
-    const progressContainer = document.getElementById('progressContainer');
-    const currentTimeEl = document.getElementById('currentTime');
-    const subtitleText = document.querySelector('.subtitle-text');
-    const subtitleElement = document.querySelector('.subtitle-element');
-
-    let isPlaying = false;
     const totalDuration = 15000;
 
     window.tl = anime.timeline({
       autoplay: false,
       duration: totalDuration,
-      easing: 'linear',
-      update: (anim) => {
-        const progress = (anim.currentTime / totalDuration) * 100;
-        progressBar.style.width = progress + '%';
-        
-        const seconds = Math.floor(anim.currentTime / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        currentTimeEl.textContent = \`\${String(minutes).padStart(2, '0')}:\${String(secs).padStart(2, '0')}\`;
-      },
-      complete: () => {
-        isPlaying = false;
-        playBtn.innerHTML = '<i class="fas fa-play"></i>';
-      }
+      easing: 'linear'
     });
 
     window.tl.add({
@@ -389,40 +262,15 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       translateY: [-100, 0],
       scale: [0.8, 1],
       duration: 1200,
-      easing: 'easeOutExpo',
-      begin: () => {
-        subtitleText.textContent = 'Let\\'s explore this concept together';
-        anime({
-          targets: subtitleText,
-          opacity: [0, 1],
-          duration: 600,
-          easing: 'easeOutQuad'
-        });
-      }
+      easing: 'easeOutExpo'
     }, 0);
 
     window.tl.add({
-      targets: '.subtitle-element',
+      targets: '.subtitle-text',
       opacity: [0, 1],
-      translateY: [30, 0],
       duration: 800,
-      easing: 'easeOutQuad',
-      begin: () => {
-        anime({
-          targets: subtitleText,
-          opacity: 0,
-          duration: 300,
-          complete: () => {
-            subtitleText.textContent = 'Understanding the core problem';
-            anime({
-              targets: subtitleText,
-              opacity: 1,
-              duration: 300
-            });
-          }
-        });
-      }
-    }, 2000);
+      easing: 'easeOutQuad'
+    }, 500);
 
     window.tl.add({
       targets: '.icon-left',
@@ -448,23 +296,15 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       translateY: [-500, 0],
       rotate: ['180deg', '0deg'],
       duration: 1500,
-      easing: 'easeOutBounce',
-      begin: () => {
-        anime({
-          targets: subtitleText,
-          opacity: 0,
-          duration: 300,
-          complete: () => {
-            subtitleText.textContent = 'Exploring different approaches';
-            anime({
-              targets: subtitleText,
-              opacity: 1,
-              duration: 300
-            });
-          }
-        });
-      }
+      easing: 'easeOutBounce'
     }, 4000);
+
+    window.tl.add({
+      targets: '.subtitle-text',
+      opacity: 0,
+      duration: 400,
+      easing: 'easeOutQuad'
+    }, 4500);
 
     window.tl.add({
       targets: '.shape-square',
@@ -476,46 +316,19 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
     }, 4500);
 
     window.tl.add({
-      targets: '.subtitle-element',
-      opacity: 0,
-      duration: 600
-    }, 6000);
-
-    window.tl.add({
-      duration: 1,
-      begin: () => {
-        subtitleElement.textContent = 'The Solution: A clear path forward';
-      }
-    }, 6600);
-
-    window.tl.add({
-      targets: '.subtitle-element',
-      opacity: 1,
-      duration: 600
-    }, 6700);
-
-    window.tl.add({
       targets: '.icon-center',
       opacity: [0, 1],
       scale: [0, 1.3, 1],
       duration: 1200,
-      easing: 'spring(1, 80, 10, 0)',
-      begin: () => {
-        anime({
-          targets: subtitleText,
-          opacity: 0,
-          duration: 300,
-          complete: () => {
-            subtitleText.textContent = 'Success! Everything comes together';
-            anime({
-              targets: subtitleText,
-              opacity: 1,
-              duration: 300
-            });
-          }
-        });
-      }
-    }, 8000);
+      easing: 'spring(1, 80, 10, 0)'
+    }, 7000);
+
+    window.tl.add({
+      targets: '.subtitle-text',
+      opacity: [0, 1],
+      duration: 600,
+      easing: 'easeOutQuad'
+    }, 7500);
 
     window.tl.add({
       targets: '.icon-center',
@@ -524,25 +337,6 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       loop: 3,
       easing: 'easeInOutQuad'
     }, 10000);
-
-    playBtn.addEventListener('click', () => {
-      if (isPlaying) {
-        window.tl.pause();
-        playBtn.innerHTML = '<i class="fas fa-play"></i>';
-      } else {
-        window.tl.play();
-        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-      }
-      isPlaying = !isPlaying;
-    });
-
-    progressContainer.addEventListener('click', (e) => {
-      const rect = progressContainer.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const percentage = x / rect.width;
-      const newTime = percentage * totalDuration;
-      window.tl.seek(newTime);
-    });
   </script>
 </body>
 </html>`;
@@ -550,7 +344,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
     return {
       htmlContent,
       duration: 15,
-      description: `Interactive educational animation explaining ${userPrompt} with dynamic elements, bounce effects, and a video player interface.`,
+      description: `Full-screen educational animation explaining ${userPrompt} with dynamic elements and bounce effects.`,
     };
   }
 }
