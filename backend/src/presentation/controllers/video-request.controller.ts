@@ -11,6 +11,7 @@ import { VideoRequestResponseDto } from '@application/dtos/video-request-respons
 import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-animation-html.use-case';
 import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
+import { GenerateScriptAndAudioUseCase } from '@application/use-cases/generate-script-and-audio.use-case';
 
 @Controller('video-requests')
 export class VideoRequestController {
@@ -18,7 +19,13 @@ export class VideoRequestController {
     private readonly generateAnimationHtmlUseCase: GenerateAnimationHtmlUseCase,
     private readonly renderVideoUseCase: RenderVideoUseCase,
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
+    private readonly generateScriptAndAudioUseCase: GenerateScriptAndAudioUseCase,
   ) {}
+
+  @Post('generate-script-audio')
+  async generateScriptAudio(@Body() body: { prompt: string }) {
+    return await this.generateScriptAndAudioUseCase.execute(body.prompt);
+  }
 
   @Post('generate')
   async generate(

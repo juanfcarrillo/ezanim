@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "elevenlabs": "^1.59.0",
+    "form-data": "^4.0.5",
+    "openai": "^6.9.1"
+  }
+}

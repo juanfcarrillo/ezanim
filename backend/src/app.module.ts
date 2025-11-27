@@ -17,6 +17,10 @@ import { R2StorageService } from './infrastructure/storage/r2-storage.service';
 import { QueueService } from './infrastructure/queue/queue.service';
 import { VideoRenderProcessor } from './infrastructure/queue/video-render.processor';
 import { VideoAnimationAgent } from './infrastructure/ai/video-animation.agent';
+import { ScriptGenerationAgent } from './infrastructure/ai/script-generation.agent';
+import { ElevenLabsService } from './infrastructure/elevenlabs/elevenlabs.service';
+import { TranscriptionService } from './infrastructure/transcription/transcription.service';
+import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-script-and-audio.use-case';
 
 @Module({
   imports: [
@@ -41,6 +45,7 @@ import { VideoAnimationAgent } from './infrastructure/ai/video-animation.agent';
     RenderVideoUseCase,
     GetVideoRequestUseCase,
     GetVideoUseCase,
+    GenerateScriptAndAudioUseCase,
     // Repositories
     InMemoryVideoRequestRepository,
     InMemoryAnimationElementRepository,
@@ -50,8 +55,11 @@ import { VideoAnimationAgent } from './infrastructure/ai/video-animation.agent';
     FFmpegService,
     R2StorageService,
     QueueService,
+    ElevenLabsService,
+    TranscriptionService,
     // AI Agent
     VideoAnimationAgent,
+    ScriptGenerationAgent,
     // Processors
     VideoRenderProcessor,
   ],

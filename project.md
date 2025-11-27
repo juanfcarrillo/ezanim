@@ -4,13 +4,24 @@ Ezanim is a engine for creating videos with ai, specially for explanatory videos
 
 ## How it works
 
-1. The user sends some request of what the want to be explained by a video.
+### Phase 1
+
+1. User maker a request about some topic.
+2. The ai generates a script using elevenlabs Controls best practices.
+3. An audio voice file is generated using elevenlabs (Eleven Multilingual V2).
+4. The transcript with timestamps is generated using stable-ts.
+5. The ai sends ranscript, the timestamps in VTT format and the initial user request 
+
+### Phase 2
+
+1. The ai receives the transcript, the timestamps in VTT format and the initial user request.
 2. The ai process it in 3 stages:
    1. The ai improves the text prompt and makes it more clear and refines it.
    2. The ai creates the elements of the video, like which elements will be animated and should appear as main characters. This elements could be html styles with css, images, vectors, etc.
    3. The ai animates the elements to be consistent with the request of the user.
-4. The preview of the video is shown to the user.
-3. The ai renders the video in a headless browser (Google Chrome) and saves it as an .mp4 file.
+3. The preview of the video is shown to the user.
+4. The ai renders the video in a headless browser (Google Chrome) and saves it as an .mp4 file.
+5. The video and audio are merged into a single file.
 
 ## Technologies
 
