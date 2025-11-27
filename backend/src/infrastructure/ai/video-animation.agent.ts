@@ -71,9 +71,11 @@ Strict Technical Requirements:
    - Each scene should have subtitle text that explains what's happening
 
 6. Code Logic:
+   - Create the anime.js timeline and expose it globally as window.tl for external control
    - Ensure the Play/Pause button controls the timeline (tl.play(), tl.pause())
    - Synchronize the progress bar width with the timeline's progress
    - Update time indicator based on timeline progress
+   - Set autoplay to false on the timeline
    - The code must be complete, copy-pasteable, and runnable
 
 7. Style Guidelines:
@@ -360,10 +362,9 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
     const subtitleElement = document.querySelector('.subtitle-element');
 
     let isPlaying = false;
-    const totalDuration = 15000; // 15 seconds
+    const totalDuration = 15000;
 
-    // Create timeline
-    const tl = anime.timeline({
+    window.tl = anime.timeline({
       autoplay: false,
       duration: totalDuration,
       easing: 'linear',
@@ -382,8 +383,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       }
     });
 
-    // Scene 1: Title entrance (0-2s)
-    tl.add({
+    window.tl.add({
       targets: '.title-main',
       opacity: [0, 1],
       translateY: [-100, 0],
@@ -401,8 +401,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       }
     }, 0);
 
-    // Scene 1: Problem subtitle (2-3s)
-    tl.add({
+    window.tl.add({
       targets: '.subtitle-element',
       opacity: [0, 1],
       translateY: [30, 0],
@@ -425,8 +424,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       }
     }, 2000);
 
-    // Scene 2: Icons and shapes fall in (3-7s)
-    tl.add({
+    window.tl.add({
       targets: '.icon-left',
       opacity: [0, 1],
       translateY: [-500, 0],
@@ -435,7 +433,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       easing: 'easeOutBounce'
     }, 3000);
 
-    tl.add({
+    window.tl.add({
       targets: '.shape-circle',
       opacity: [0, 1],
       translateY: [-500, 0],
@@ -444,7 +442,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       easing: 'easeOutBounce'
     }, 3500);
 
-    tl.add({
+    window.tl.add({
       targets: '.icon-right',
       opacity: [0, 1],
       translateY: [-500, 0],
@@ -468,7 +466,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       }
     }, 4000);
 
-    tl.add({
+    window.tl.add({
       targets: '.shape-square',
       opacity: [0, 1],
       translateY: [-500, 0],
@@ -477,30 +475,26 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       easing: 'easeOutBounce'
     }, 4500);
 
-    // Scene 2: Hide problem subtitle
-    tl.add({
+    window.tl.add({
       targets: '.subtitle-element',
       opacity: 0,
       duration: 600
     }, 6000);
 
-    // Update subtitle text after it fades
-    tl.add({
+    window.tl.add({
       duration: 1,
       begin: () => {
         subtitleElement.textContent = 'The Solution: A clear path forward';
       }
     }, 6600);
 
-    // Scene 2: Show solution subtitle
-    tl.add({
+    window.tl.add({
       targets: '.subtitle-element',
       opacity: 1,
       duration: 600
     }, 6700);
 
-    // Scene 3: Success icon (8-10s)
-    tl.add({
+    window.tl.add({
       targets: '.icon-center',
       opacity: [0, 1],
       scale: [0, 1.3, 1],
@@ -523,8 +517,7 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       }
     }, 8000);
 
-    // Scene 3: Pulse effect on success (10-15s)
-    tl.add({
+    window.tl.add({
       targets: '.icon-center',
       scale: [1, 1.1, 1],
       duration: 1000,
@@ -532,25 +525,23 @@ IMPORTANT: The HTML must be a complete, valid, single-file HTML document with al
       easing: 'easeInOutQuad'
     }, 10000);
 
-    // Play/Pause button
     playBtn.addEventListener('click', () => {
       if (isPlaying) {
-        tl.pause();
+        window.tl.pause();
         playBtn.innerHTML = '<i class="fas fa-play"></i>';
       } else {
-        tl.play();
+        window.tl.play();
         playBtn.innerHTML = '<i class="fas fa-pause"></i>';
       }
       isPlaying = !isPlaying;
     });
 
-    // Progress bar click
     progressContainer.addEventListener('click', (e) => {
       const rect = progressContainer.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const percentage = x / rect.width;
       const newTime = percentage * totalDuration;
-      tl.seek(newTime);
+      window.tl.seek(newTime);
     });
   </script>
 </body>
