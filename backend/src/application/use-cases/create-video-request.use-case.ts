@@ -23,7 +23,10 @@ export class CreateVideoRequestUseCase {
       userPrompt: userPrompt,
     });
 
-    console.log('[CreateVideoRequestUseCase] Created video request:', videoRequest.id);
+    console.log(
+      '[CreateVideoRequestUseCase] Created video request:',
+      videoRequest.id,
+    );
 
     // 4. Return videoRequestId
     return videoRequest.id;

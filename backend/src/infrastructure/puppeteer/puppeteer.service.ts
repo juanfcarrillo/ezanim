@@ -122,7 +122,7 @@ export class PuppeteerService {
     if (framePaths.length === 0) return;
 
     const tempDir = path.dirname(framePaths[0]);
-    
+
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
       console.log('[PuppeteerService] Cleaned up temp directory:', tempDir);

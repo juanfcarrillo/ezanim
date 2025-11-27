@@ -5,7 +5,7 @@ echo "🎬 Creando video de prueba..."
 RESPONSE=$(curl -s -X POST http://localhost:3000/poc/test-video \
   -H 'Content-Type: application/json' \
   -d '{
-    "prompt": "Explica cómo funciona el patrón de diseño Singleton paso a paso"
+    "prompt": "Explica cómo funciona la inflacion paso a paso"
   }')
 
 echo "Respuesta: $RESPONSE"

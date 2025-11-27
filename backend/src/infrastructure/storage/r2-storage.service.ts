@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -16,7 +20,9 @@ export class R2StorageService {
     const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 
     if (!accountId || !accessKeyId || !secretAccessKey) {
-      console.warn('[R2StorageService] R2 credentials not configured, using mock mode');
+      console.warn(
+        '[R2StorageService] R2 credentials not configured, using mock mode',
+      );
       return;
     }
 

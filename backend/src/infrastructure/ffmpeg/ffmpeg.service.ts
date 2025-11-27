@@ -64,7 +64,9 @@ export class FFmpegService {
         })
         .on('progress', (progress) => {
           if (progress.percent) {
-            console.log(`[FFmpegService] Encoding progress: ${progress.percent.toFixed(1)}%`);
+            console.log(
+              `[FFmpegService] Encoding progress: ${progress.percent.toFixed(1)}%`,
+            );
           }
         })
         .on('end', () => {
@@ -83,11 +85,13 @@ export class FFmpegService {
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(videoPath, (err, metadata) => {
         if (err) {
-          reject(err);
+          reject(err as Error);
           return;
         }
 
-        const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
+        const videoStream = metadata.streams.find(
+          (s) => s.codec_type === 'video',
+        );
         if (!videoStream) {
           reject(new Error('No video stream found'));
           return;
@@ -97,7 +101,7 @@ export class FFmpegService {
           duration: metadata.format.duration || 0,
           width: videoStream.width || 0,
           height: videoStream.height || 0,
-          fps: eval(videoStream.r_frame_rate || '0') || 0,
+          fps: (eval(videoStream.r_frame_rate || '0') || 0) as number,
           size: metadata.format.size || 0,
         });
       });

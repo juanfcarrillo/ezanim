@@ -106,7 +106,8 @@ export class PocController {
         '7. R2 Storage Service - Uploads video to Cloudflare R2',
       ],
       usage: {
-        startTest: 'POST /poc/test-video with body: { "prompt": "your prompt here" }',
+        startTest:
+          'POST /poc/test-video with body: { "prompt": "your prompt here" }',
         checkStatus: 'GET /poc/status/:videoRequestId',
         getVideo: 'GET /poc/video/:videoRequestId',
       },

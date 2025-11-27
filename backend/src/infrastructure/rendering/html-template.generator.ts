@@ -33,14 +33,17 @@ export class HtmlTemplateGenerator {
 
         // Calculate offset: delay is when it starts in the timeline
         const offset = element.animation.delay || 0;
-        const offsetStr = offset === 0 ? '0' : `-=${duration * 1000 - offset}`;
 
         return `        .add({
             targets: '.element-${index}',
             ${props},
             duration: ${element.animation.duration},
-            easing: '${element.animation.easing}'${element.animation.loop ? `,
-            loop: true` : ''}
+            easing: '${element.animation.easing}'${
+              element.animation.loop
+                ? `,
+            loop: true`
+                : ''
+            }
         }, ${offset})`;
       })
       .filter(Boolean)

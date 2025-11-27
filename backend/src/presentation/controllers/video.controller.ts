@@ -7,7 +7,9 @@ export class VideoController {
   constructor(private readonly getVideoUseCase: GetVideoUseCase) {}
 
   @Get('by-request/:videoRequestId')
-  async getByVideoRequestId(@Param('videoRequestId') videoRequestId: string): Promise<VideoResponseDto> {
+  async getByVideoRequestId(
+    @Param('videoRequestId') videoRequestId: string,
+  ): Promise<VideoResponseDto> {
     return await this.getVideoUseCase.execute(videoRequestId);
   }
 }

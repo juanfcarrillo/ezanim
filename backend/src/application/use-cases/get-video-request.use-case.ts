@@ -4,7 +4,9 @@ import { VideoRequestResponseDto } from '../dtos/video-request-response.dto';
 
 @Injectable()
 export class GetVideoRequestUseCase {
-  constructor(private readonly videoRequestRepo: InMemoryVideoRequestRepository) {}
+  constructor(
+    private readonly videoRequestRepo: InMemoryVideoRequestRepository,
+  ) {}
 
   async execute(videoRequestId: string): Promise<VideoRequestResponseDto> {
     // 1. Find VideoRequest by id

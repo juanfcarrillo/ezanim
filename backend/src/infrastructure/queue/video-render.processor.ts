@@ -37,8 +37,10 @@ export class VideoRenderProcessor extends WorkerHost {
 
   async process(job: Job<VideoRenderJobData>): Promise<void> {
     const { videoRequestId, userPrompt, configuration } = job.data;
-    
-    console.log(`[VideoRenderProcessor] Starting job for request: ${videoRequestId}`);
+
+    console.log(
+      `[VideoRenderProcessor] Starting job for request: ${videoRequestId}`,
+    );
 
     try {
       // Get video request
@@ -49,13 +51,18 @@ export class VideoRenderProcessor extends WorkerHost {
 
       // Stage 1: Generate Complete Video Animation
       await job.updateProgress(20);
-      videoRequest = videoRequest.updateStatus(VideoRequestStatus.REFINING_PROMPT);
+      videoRequest = videoRequest.updateStatus(
+        VideoRequestStatus.REFINING_PROMPT,
+      );
       await this.videoRequestRepo.update(videoRequest);
-      
+
       console.log('[Stage 1] Generating complete video animation with AI...');
-      const animationResult = await this.videoAnimationAgent.generateVideoAnimation(userPrompt);
-      
-      videoRequest = videoRequest.updateRefinedPrompt(animationResult.description);
+      const animationResult =
+        await this.videoAnimationAgent.generateVideoAnimation(userPrompt);
+
+      videoRequest = videoRequest.updateRefinedPrompt(
+        animationResult.description,
+      );
       await this.videoRequestRepo.update(videoRequest);
 
       // Stage 2: Rendering
@@ -135,14 +142,18 @@ export class VideoRenderProcessor extends WorkerHost {
       videoRequest = videoRequest.updateStatus(VideoRequestStatus.COMPLETED);
       await this.videoRequestRepo.update(videoRequest);
 
-      console.log(`[VideoRenderProcessor] Job completed successfully: ${videoRequestId}`);
+      console.log(
+        `[VideoRenderProcessor] Job completed successfully: ${videoRequestId}`,
+      );
     } catch (error) {
       console.error('[VideoRenderProcessor] Job failed:', error);
-      
+
       // Mark as failed
       const videoRequest = await this.videoRequestRepo.findById(videoRequestId);
       if (videoRequest) {
-        const failedRequest = videoRequest.updateStatus(VideoRequestStatus.FAILED);
+        const failedRequest = videoRequest.updateStatus(
+          VideoRequestStatus.FAILED,
+        );
         await this.videoRequestRepo.update(failedRequest);
       }
 
