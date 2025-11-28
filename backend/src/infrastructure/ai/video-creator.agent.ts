@@ -47,6 +47,7 @@ Format: A single HTML file containing all necessary CSS and JS.
 Libraries:
 - Use Anime.js (v3.2.1 via CDN) for all animations.
 - Use FontAwesome (v6.4.0 via CDN) for icons.
+- Illustrations: Use inline SVGs for main visuals.
 
 Visual Structure (Video Player Style):
 - Create a main container that looks like a modern video player (rounded corners, soft shadow, dark mode aesthetic).

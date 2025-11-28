@@ -1,18 +1,20 @@
-
 async function run() {
-  const prompt = "Explica brevemente qué es la fotosíntesis para niños.";
+  const prompt = 'explicame el principio open close como si fuera para niños';
 
   console.log('Sending full video creation request...');
   console.log('Prompt:', prompt);
 
   try {
-    const response = await fetch('http://localhost:3000/video-requests/create-full', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      'http://localhost:3000/video-requests/create-full',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
       },
-      body: JSON.stringify({ prompt }),
-    });
+    );
 
     const data = await response.json();
     console.log('\nResponse status:', response.status);
@@ -27,10 +29,15 @@ async function run() {
       let attempts = 0;
       while (attempts < 30) {
         await new Promise(resolve => setTimeout(resolve, 2000));
-        const statusRes = await fetch(`http://localhost:3000/poc/status/${requestId}`);
+        const statusRes = await fetch(
+          `http://localhost:3000/poc/status/${requestId}`,
+        );
         const statusData = await statusRes.json();
-        
-        if (statusData.videoRequest && statusData.videoRequest.status === 'PREVIEW_READY') {
+
+        if (
+          statusData.videoRequest &&
+          statusData.videoRequest.status === 'PREVIEW_READY'
+        ) {
           console.log('[TEST] Preview is READY!');
           break;
         }
@@ -40,13 +47,18 @@ async function run() {
 
       // Trigger Render
       console.log('\n[TEST] Triggering Render...');
-      const renderRes = await fetch(`http://localhost:3000/poc/render/${requestId}`, {
-        method: 'POST'
-      });
+      const renderRes = await fetch(
+        `http://localhost:3000/poc/render/${requestId}`,
+        {
+          method: 'POST',
+        },
+      );
       const renderData = await renderRes.json();
-      console.log('[TEST] Render response:', JSON.stringify(renderData, null, 2));
+      console.log(
+        '[TEST] Render response:',
+        JSON.stringify(renderData, null, 2),
+      );
     }
-
   } catch (error) {
     console.error('\nError sending request:', error);
   }
