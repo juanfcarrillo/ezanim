@@ -18,6 +18,8 @@ import { R2StorageService } from './infrastructure/storage/r2-storage.service';
 import { QueueService } from './infrastructure/queue/queue.service';
 import { VideoRenderProcessor } from './infrastructure/queue/video-render.processor';
 import { VideoCreatorAgent } from './infrastructure/ai/video-creator.agent';
+import { AnimationReviewAgent } from './infrastructure/ai/animation-review.agent';
+import { QualityAssuranceAgent } from './infrastructure/ai/quality-assurance.agent';
 import { ScriptGenerationAgent } from './infrastructure/ai/script-generation.agent';
 import { ElevenLabsService } from './infrastructure/elevenlabs/elevenlabs.service';
 import { TranscriptionService } from './infrastructure/transcription/transcription.service';
@@ -62,6 +64,8 @@ import { GenerateVideoFromScriptUseCase } from './application/use-cases/generate
     TranscriptionService,
     // AI Agent
     VideoCreatorAgent,
+    AnimationReviewAgent,
+    QualityAssuranceAgent,
     ScriptGenerationAgent,
     // Processors
     VideoRenderProcessor,

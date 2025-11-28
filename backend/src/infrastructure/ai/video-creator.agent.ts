@@ -91,6 +91,49 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
     }
   }
 
+  async refineVideo(
+    currentHtml: string,
+    critique: string,
+  ): Promise<string> {
+    console.log('[VideoCreatorAgent] Refining video based on critique...');
+
+    if (!this.aiProvider) {
+      return currentHtml;
+    }
+
+    try {
+      const systemPrompt = `You are the same expert frontend developer.
+You previously generated an animation, but "The Critic" found some issues.
+
+Critique to Address:
+"${critique}"
+
+Your Task:
+- Fix the issues mentioned in the critique.
+- Keep the rest of the code intact if it works well.
+- Ensure the final output is still a single, valid HTML file with Anime.js.
+
+Current HTML Code:
+${currentHtml.substring(0, 50000)}
+
+Return ONLY the corrected HTML code.`;
+
+      const response = await this.aiProvider.generateContent(systemPrompt);
+
+      let html = response.trim();
+      if (html.startsWith('```html')) {
+        html = html.replace(/^```html/, '').replace(/```$/, '');
+      } else if (html.startsWith('```')) {
+        html = html.replace(/^```/, '').replace(/```$/, '');
+      }
+
+      return html.trim();
+    } catch (error) {
+      console.error('[VideoCreatorAgent] Error refining video:', error);
+      return currentHtml;
+    }
+  }
+
   private getMockHtml(topic: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
