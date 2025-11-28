@@ -1,5 +1,5 @@
 async function run() {
-  const prompt = 'explicame el principio open close como si fuera para niños';
+  const prompt = 'explicame el principio de sustitución de liskov de solid como si fuera para niños';
 
   console.log('Sending full video creation request...');
   console.log('Prompt:', prompt);

@@ -49,13 +49,14 @@ Libraries:
 - Use FontAwesome (v6.4.0 via CDN) for icons.
 - Illustrations: Use inline SVGs for main visuals.
 
-Visual Structure (Video Player Style):
-- Create a main container that looks like a modern video player (rounded corners, soft shadow, dark mode aesthetic).
-- UI: It must have a control bar at the bottom with: A Play/Pause button (toggles icon), a progress bar that fills up as the animation plays, and a time indicator (e.g., 00:00 / 00:${duration}).
-- Stage: A central area (div.stage-center) where the action happens, using absolute positioning for elements.
-- Subtitles: A section at the bottom to display explanatory text that changes per scene.
+Visual Structure (Full Screen Cinematic):
+- The animation must occupy the entire viewport (100vw, 100vh).
+- No visible video player controls (play button, progress bar, etc.) should be rendered.
+- Stage: The entire body is the stage. Use absolute positioning for elements relative to the viewport.
+- Subtitles: A clean, cinematic subtitle overlay at the bottom center, with a semi-transparent background for readability.
 
 Animation Style:
+
 - Use anime.timeline() to sequence the entire story.
 - Dynamic Entrances: Elements should not just fade in. Make them fall from the top with a bounce effect (easing: 'easeOutBounce') or slide in dynamically to create a fun, "physics-based" feel.
 - Micro-interactions: Use anime.stagger to animate groups of elements (e.g., if there are multiple items, do not drop them all at once; drop them with a slight delay between each).
@@ -67,8 +68,6 @@ Animation Script (The Scenes):
 - Scene 3 (The Conclusion): Describe the final state or resolution.
 
 Code Logic:
-- Ensure the Play/Pause button controls the timeline (tl.play(), tl.pause()).
-- Synchronize the progress bar width with the timeline's progress.
 - Expose the timeline globally as 'window.tl' so it can be controlled externally.
 - IMPORTANT: Do NOT auto-play the timeline. It should wait for user interaction or external control.
 
@@ -91,10 +90,7 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
     }
   }
 
-  async refineVideo(
-    currentHtml: string,
-    critique: string,
-  ): Promise<string> {
+  async refineVideo(currentHtml: string, critique: string): Promise<string> {
     console.log('[VideoCreatorAgent] Refining video based on critique...');
 
     if (!this.aiProvider) {
@@ -145,51 +141,23 @@ Return ONLY the corrected HTML code.`;
     <style>
         :root {
             --bg-dark: #1e272e;
-            --stage-bg: #2d3436;
             --primary: #0984e3;
-            --accent: #00b894;
             --text: #dfe6e9;
         }
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: var(--bg-dark); font-family: sans-serif; color: var(--text); }
-        .video-player { position: relative; width: 1920px; height: 1080px; background: var(--stage-bg); overflow: hidden; }
-        .stage-center { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; background: var(--bg-dark); font-family: sans-serif; color: var(--text); display: flex; justify-content: center; align-items: center; }
         .element { font-size: 4rem; position: absolute; opacity: 0; }
-        .controls { position: absolute; bottom: 0; width: 100%; height: 60px; background: rgba(0,0,0,0.7); display: flex; align-items: center; padding: 0 20px; }
-        .progress-container { flex: 1; height: 5px; background: rgba(255,255,255,0.2); margin: 0 15px; cursor: pointer; }
-        .progress-bar { width: 0%; height: 100%; background: var(--primary); }
-        button { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="video-player">
-        <div class="stage-center">
-            <div class="element el-1">MOCK MODE</div>
-            <div class="element el-2" style="top: 60%">${topic}</div>
-        </div>
-        <div class="controls">
-            <button id="play"><i class="fas fa-play"></i></button>
-            <div class="progress-container"><div class="progress-bar"></div></div>
-            <div id="time">00:00 / 00:10</div>
-        </div>
-    </div>
+    <div class="element el-1">MOCK MODE</div>
+    <div class="element el-2" style="top: 60%">${topic}</div>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <script>
-        const progressBar = document.querySelector('.progress-bar');
-        const timeDisplay = document.getElementById('time');
-        const playBtn = document.getElementById('play');
-        const icon = playBtn.querySelector('i');
-
         window.tl = anime.timeline({
             easing: 'easeOutExpo',
             duration: 10000,
-            autoplay: false,
-            update: (anim) => {
-                progressBar.style.width = anim.progress + '%';
-                timeDisplay.innerText = \`00:\${Math.floor(anim.currentTime/1000).toString().padStart(2,'0')} / 00:10\`;
-            },
-            complete: () => {
-                icon.className = 'fas fa-rotate-right';
-            }
+            autoplay: false
         });
 
         window.tl.add({
@@ -205,11 +173,6 @@ Return ONLY the corrected HTML code.`;
             opacity: [0, 1],
             duration: 800
         });
-
-        playBtn.onclick = () => {
-            if (window.tl.paused) { window.tl.play(); icon.className = 'fas fa-pause'; }
-            else { window.tl.pause(); icon.className = 'fas fa-play'; }
-        };
     </script>
 </body>
 </html>`;
