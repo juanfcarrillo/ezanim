@@ -1,10 +1,12 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-animation-html.use-case';
 import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
 import { GetVideoUseCase } from '@application/use-cases/get-video.use-case';
 import { GenerateVideoFromScriptUseCase } from '@application/use-cases/generate-video-from-script.use-case';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
 
 @Controller('poc')
 export class PocController {
@@ -68,6 +70,29 @@ export class PocController {
       return videoRequest.htmlContent;
     } catch (error) {
       return `<html><body><h1>Error</h1><p>${error.message}</p></body></html>`;
+    }
+  }
+
+  @Get('audio/:requestId')
+  async getAudio(@Param('requestId') requestId: string, @Res() res: Response) {
+    try {
+      const videoRequest = await this.getVideoRequestUseCase.execute(requestId);
+      
+      if (!videoRequest.audioPath) {
+        return res.status(404).json({ error: 'Audio not found' });
+      }
+
+      // Check if file exists
+      if (!fs.existsSync(videoRequest.audioPath)) {
+        return res.status(404).json({ error: 'Audio file not found on disk' });
+      }
+
+      // Serve the audio file
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.sendFile(videoRequest.audioPath);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
     }
   }
 
