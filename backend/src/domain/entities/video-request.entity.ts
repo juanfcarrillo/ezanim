@@ -1,3 +1,5 @@
+import * as crypto from 'crypto';
+
 export class VideoRequest {
   constructor(
     public readonly id: string,
@@ -7,11 +9,12 @@ export class VideoRequest {
     public readonly audioPath: string | null,
     public readonly duration: number | null,
     public readonly status: VideoRequestStatus,
+    public readonly aspectRatio: '16:9' | '9:16' | '1:1',
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
   ) {}
 
-  static create(userPrompt: string): VideoRequest {
+  static create(userPrompt: string, aspectRatio: '16:9' | '9:16' | '1:1' = '16:9'): VideoRequest {
     return new VideoRequest(
       crypto.randomUUID(),
       userPrompt,
@@ -20,6 +23,7 @@ export class VideoRequest {
       null,
       null,
       VideoRequestStatus.PENDING,
+      aspectRatio,
       new Date(),
       new Date(),
     );
@@ -34,6 +38,7 @@ export class VideoRequest {
       this.audioPath,
       this.duration,
       status,
+      this.aspectRatio,
       this.createdAt,
       new Date(),
     );
@@ -48,6 +53,7 @@ export class VideoRequest {
       this.audioPath,
       this.duration,
       this.status,
+      this.aspectRatio,
       this.createdAt,
       new Date(),
     );
@@ -62,6 +68,7 @@ export class VideoRequest {
       this.audioPath,
       this.duration,
       this.status,
+      this.aspectRatio,
       this.createdAt,
       new Date(),
     );
@@ -76,6 +83,7 @@ export class VideoRequest {
       audioPath,
       duration,
       this.status,
+      this.aspectRatio,
       this.createdAt,
       new Date(),
     );

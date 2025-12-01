@@ -16,7 +16,14 @@ export class PuppeteerService {
   private browser: puppeteer.Browser | null = null;
 
   async ensureBrowser(): Promise<puppeteer.Browser> {
-    if (!this.browser) {
+    if (!this.browser || !this.browser.isConnected()) {
+      if (this.browser) {
+        try {
+          await this.browser.close();
+        } catch (e) {
+          // Ignore close errors
+        }
+      }
       this.browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -35,87 +42,108 @@ export class PuppeteerService {
     console.log('[PuppeteerService] Starting frame capture');
     const { html, width, height, fps, duration } = options;
 
-    const browser = await this.ensureBrowser();
-    const page = await browser.newPage();
-
-    await page.setViewport({ width, height });
-
-    // Load HTML content
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-
-    // Set puppeteer mode to prevent auto-play
-    await page.evaluate(() => {
-      window['puppeteerMode'] = true;
-    });
-
-    // Wait for anime.js to load and timeline to be ready
-    await page.waitForFunction(() => typeof window['anime'] !== 'undefined');
-    await page.waitForFunction(() => typeof window['tl'] !== 'undefined');
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Ensure timeline is paused and at beginning
-    await page.evaluate(() => {
-      const tl = window['tl'];
-      if (tl) {
-        tl.pause();
-        tl.seek(0);
-      }
-    });
-
-    const totalFrames = Math.ceil(duration * fps);
-    const framePaths: string[] = [];
-
-    // Create temp directory for frames
-    const tempDir = path.join(
-      process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
-      `frames-${Date.now()}`,
-    );
-    await fs.mkdir(tempDir, { recursive: true });
-
-    console.log(
-      `[PuppeteerService] Capturing ${totalFrames} frames at ${fps} FPS for ${duration}s`,
-    );
-
-    for (let i = 0; i < totalFrames; i++) {
-      // Calculate exact time for this frame
-      const currentTime = (i / fps) * 1000; // milliseconds
-
-      // Seek timeline to exact time
-      await page.evaluate((time) => {
-        const tl = window['tl'];
-        if (tl) {
-          tl.seek(time);
-        }
-      }, currentTime);
-
-      // Small delay to let the DOM update
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const framePath = path.join(
-        tempDir,
-        `frame-${String(i).padStart(5, '0')}.png`,
-      );
-
-      // Capture screenshot
-      await page.screenshot({
-        path: framePath,
-        type: 'png',
-      });
-
-      framePaths.push(framePath);
-
-      // Log progress every 30 frames
-      if ((i + 1) % 30 === 0 || i === totalFrames - 1) {
-        console.log(
-          `[PuppeteerService] Progress: ${i + 1}/${totalFrames} frames (${currentTime.toFixed(0)}ms)`,
-        );
-      }
+    let browser = await this.ensureBrowser();
+    let page;
+    
+    try {
+      page = await browser.newPage();
+    } catch (error) {
+      console.error('[PuppeteerService] Error creating new page, restarting browser:', error);
+      // Force restart browser
+      try {
+        await browser.close();
+      } catch (e) {}
+      this.browser = null;
+      browser = await this.ensureBrowser();
+      page = await browser.newPage();
     }
 
-    await page.close();
-    console.log('[PuppeteerService] Frame capture complete');
+    try {
+      await page.setViewport({
+        width,
+        height,
+        deviceScaleFactor: 2, // Render at 2x resolution (Retina) for sharper text/vectors
+      });
 
-    return framePaths;
+      // Load HTML content
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+
+      // Set puppeteer mode to prevent auto-play
+      await page.evaluate(() => {
+        window['puppeteerMode'] = true;
+      });
+
+      // Wait for anime.js to load and timeline to be ready
+      await page.waitForFunction(() => typeof window['anime'] !== 'undefined');
+      await page.waitForFunction(() => typeof window['tl'] !== 'undefined');
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Ensure timeline is paused and at beginning
+      await page.evaluate(() => {
+        const tl = window['tl'];
+        if (tl) {
+          tl.pause();
+          tl.seek(0);
+        }
+      });
+
+      const totalFrames = Math.ceil(duration * fps);
+      const framePaths: string[] = [];
+
+      // Create temp directory for frames
+      const tempDir = path.join(
+        process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
+        `frames-${Date.now()}`,
+      );
+      await fs.mkdir(tempDir, { recursive: true });
+
+      console.log(
+        `[PuppeteerService] Capturing ${totalFrames} frames at ${fps} FPS for ${duration}s`,
+      );
+
+      for (let i = 0; i < totalFrames; i++) {
+        // Calculate exact time for this frame
+        const currentTime = (i / fps) * 1000; // milliseconds
+
+        // Seek timeline to exact time
+        await page.evaluate((time) => {
+          const tl = window['tl'];
+          if (tl) {
+            tl.seek(time);
+          }
+        }, currentTime);
+
+        // Small delay to let the DOM update
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        const framePath = path.join(
+          tempDir,
+          `frame-${String(i).padStart(5, '0')}.png`,
+        );
+
+        // Capture screenshot
+        await page.screenshot({
+          path: framePath,
+          type: 'png',
+        });
+
+        framePaths.push(framePath);
+
+        // Log progress every 30 frames
+        if ((i + 1) % 30 === 0 || i === totalFrames - 1) {
+          console.log(
+            `[PuppeteerService] Progress: ${i + 1}/${totalFrames} frames (${currentTime.toFixed(0)}ms)`,
+          );
+        }
+      }
+
+      console.log('[PuppeteerService] Frame capture complete');
+      return framePaths;
+    } finally {
+      if (page) {
+        await page.close().catch(e => console.error('Error closing page:', e));
+      }
+    }
   }
 
   async cleanup(framePaths: string[]): Promise<void> {

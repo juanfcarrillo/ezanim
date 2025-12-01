@@ -30,11 +30,28 @@ export class RenderVideoUseCase {
 
     console.log('[RenderVideoUseCase] Queueing render job:', videoRequestId);
 
+    // Calculate dimensions based on aspect ratio
+    let width = 1920;
+    let height = 1080;
+
+    if (videoRequest.aspectRatio === '9:16') {
+      width = 1080;
+      height = 1920;
+    } else if (videoRequest.aspectRatio === '1:1') {
+      width = 1080;
+      height = 1080;
+    }
+
     await this.queueService.addVideoRenderJob({
       videoRequestId,
       htmlContent,
       duration,
       audioPath,
+      configuration: {
+        width,
+        height,
+        fps: 60,
+      },
     });
   }
 }

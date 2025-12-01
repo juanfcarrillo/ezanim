@@ -11,6 +11,7 @@ interface VideoData {
   htmlContent?: string;
   videoUrl?: string;
   script?: string;
+  aspectRatio?: '16:9' | '9:16' | '1:1';
 }
 
 function App() {
@@ -21,7 +22,7 @@ function App() {
   // Configure your backend URL
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
-  const handleVideoRequest = async (prompt: string) => {
+  const handleVideoRequest = async (prompt: string, aspectRatio: '16:9' | '9:16' | '1:1') => {
     setState('loading');
     setError(null);
 
@@ -32,7 +33,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, aspectRatio }),
       });
 
       if (!response.ok) {
@@ -43,7 +44,7 @@ function App() {
       
       // Poll for the HTML preview
       const requestId = data.requestId;
-      await pollForPreview(requestId);
+      await pollForPreview(requestId, aspectRatio);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -51,7 +52,7 @@ function App() {
     }
   };
 
-  const pollForPreview = async (requestId: string) => {
+  const pollForPreview = async (requestId: string, aspectRatio: '16:9' | '9:16' | '1:1') => {
     const maxAttempts = 30; // 30 seconds
     let attempts = 0;
 
@@ -64,6 +65,7 @@ function App() {
           setVideoData({
             requestId,
             htmlContent,
+            aspectRatio,
           });
           setState('preview');
         } else if (attempts < maxAttempts) {
@@ -127,10 +129,11 @@ function App() {
           )}
 
           {(state === 'preview' || state === 'rendering' || state === 'completed') && videoData && (
-            <VideoPlayer
+            <VideoPlayer 
               htmlContent={videoData.htmlContent}
               videoUrl={videoData.videoUrl}
               requestId={videoData.requestId}
+              aspectRatio={videoData.aspectRatio}
               onRegenerate={handleRegenerate}
             />
           )}

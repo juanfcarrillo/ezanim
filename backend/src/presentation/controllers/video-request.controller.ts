@@ -32,11 +32,21 @@ export class VideoRequestController {
   ) {}
 
   @Post('create-full')
-  async createFullVideo(@Body() body: { prompt: string }) {
-    console.log(`[VideoRequestController] Starting full video creation for: "${body.prompt}"`);
-    
+  async createFullVideo(
+    @Body()
+    body: {
+      prompt: string;
+      aspectRatio?: '16:9' | '9:16' | '1:1';
+    },
+  ) {
+    console.log(
+      `[VideoRequestController] Starting full video creation for: "${body.prompt}" with aspect ratio: ${body.aspectRatio || '16:9'}`,
+    );
+
     // 1. Phase 1: Generate Script, Audio, and Transcription
-    const phase1Result = await this.generateScriptAndAudioUseCase.execute(body.prompt);
+    const phase1Result = await this.generateScriptAndAudioUseCase.execute(
+      body.prompt,
+    );
     
     // Save audio to temp file
     const audioDir = path.join(
@@ -54,9 +64,10 @@ export class VideoRequestController {
     console.log(`[VideoRequestController] Audio saved to: ${audioPath}`);
 
     // Calculate duration
-    const duration = phase1Result.words.length > 0 
-      ? phase1Result.words[phase1Result.words.length - 1].end + 2 
-      : 20; // Default fallback
+    const duration =
+      phase1Result.words.length > 0
+        ? phase1Result.words[phase1Result.words.length - 1].end + 2
+        : 20; // Default fallback
 
     // 2. Phase 2: Generate Video HTML and Prepare for Render
     await this.generateVideoFromScriptUseCase.execute({
@@ -66,6 +77,7 @@ export class VideoRequestController {
       audioPath,
       vtt: phase1Result.vtt,
       duration,
+      aspectRatio: body.aspectRatio || '16:9',
     });
 
     return {
@@ -76,13 +88,14 @@ export class VideoRequestController {
         prompt: body.prompt,
         script: phase1Result.script,
         duration,
-        audioPath
+        audioPath,
+        aspectRatio: body.aspectRatio || '16:9',
       },
       endpoints: {
         status: `/poc/status/${requestId}`,
         preview: `/poc/preview/${requestId}`,
         render: `/poc/render/${requestId}`,
-      }
+      },
     };
   }
 
@@ -128,8 +141,7 @@ export class VideoRequestController {
       await this.transcriptionService.transcribeAudio(audioBuffer);
 
     // Calculate duration from words or audio file (approx)
-    const duration =
-      words.length > 0 ? words[words.length - 1].end + 2 : 30; // Add buffer
+    const duration = words.length > 0 ? words[words.length - 1].end + 2 : 30; // Add buffer
 
     // 5. Execute Phase 2
     console.log('Executing Phase 2...');
@@ -140,6 +152,7 @@ export class VideoRequestController {
       audioPath,
       vtt,
       duration,
+      aspectRatio: '16:9',
     });
 
     return {

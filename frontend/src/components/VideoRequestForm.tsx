@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import './VideoRequestForm.css';
 
 interface VideoRequestFormProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, aspectRatio: '16:9' | '9:16' | '1:1') => void;
   isLoading: boolean;
 }
 
 export const VideoRequestForm: React.FC<VideoRequestFormProps> = ({ onSubmit, isLoading }) => {
   const [prompt, setPrompt] = useState('');
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (prompt.trim().length >= 10) {
-      onSubmit(prompt);
+      onSubmit(prompt, aspectRatio);
     }
   };
 
@@ -39,6 +40,21 @@ export const VideoRequestForm: React.FC<VideoRequestFormProps> = ({ onSubmit, is
           <span className="char-count">
             {prompt.length} characters {prompt.length < 10 && `(minimum 10)`}
           </span>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="aspectRatio">Aspect Ratio</label>
+          <select
+            id="aspectRatio"
+            value={aspectRatio}
+            onChange={(e) => setAspectRatio(e.target.value as '16:9' | '9:16' | '1:1')}
+            disabled={isLoading}
+            className="aspect-ratio-select"
+          >
+            <option value="16:9">16:9 (Landscape)</option>
+            <option value="9:16">9:16 (Portrait/Shorts)</option>
+            <option value="1:1">1:1 (Square)</option>
+          </select>
         </div>
 
         <button 

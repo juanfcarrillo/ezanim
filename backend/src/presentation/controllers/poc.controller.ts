@@ -19,13 +19,17 @@ export class PocController {
   ) {}
 
   @Post('test-script-video')
-  async testScriptVideo(@Body() body: { 
-    prompt: string; 
-    script: string; 
-    vtt: string;
-    duration?: number;
-    audioPath?: string;
-  }) {
+  async testScriptVideo(
+    @Body()
+    body: {
+      prompt: string;
+      script: string;
+      vtt: string;
+      duration?: number;
+      audioPath?: string;
+      aspectRatio?: '16:9' | '9:16' | '1:1';
+    },
+  ) {
     const requestId = uuidv4();
     console.log('='.repeat(60));
     console.log('🎬 POC - Starting Script-to-Video Test');
@@ -44,12 +48,14 @@ export class PocController {
       vtt: body.vtt,
       audioPath: body.audioPath || '/tmp/ezanim/mock-audio.mp3', // Use provided path or default
       duration,
+      aspectRatio: body.aspectRatio || '16:9',
     });
 
     return {
       success: true,
       requestId,
-      message: 'Video generation from script started. HTML will be ready for preview soon.',
+      message:
+        'Video generation from script started. HTML will be ready for preview soon.',
       endpoints: {
         status: `/poc/status/${requestId}`,
         preview: `/poc/preview/${requestId}`,
@@ -62,13 +68,13 @@ export class PocController {
   async previewHtml(@Param('requestId') requestId: string) {
     try {
       const videoRequest = await this.getVideoRequestUseCase.execute(requestId);
-      
+
       if (!videoRequest.htmlContent) {
         return `<html><body><h1>Preview not ready</h1><p>Status: ${videoRequest.status}</p></body></html>`;
       }
 
       return videoRequest.htmlContent;
-    } catch (error) {
+    } catch (error: any) {
       return `<html><body><h1>Error</h1><p>${error.message}</p></body></html>`;
     }
   }
@@ -77,7 +83,7 @@ export class PocController {
   async getAudio(@Param('requestId') requestId: string, @Res() res: Response) {
     try {
       const videoRequest = await this.getVideoRequestUseCase.execute(requestId);
-      
+
       if (!videoRequest.audioPath) {
         return res.status(404).json({ error: 'Audio not found' });
       }
@@ -91,7 +97,7 @@ export class PocController {
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Accept-Ranges', 'bytes');
       res.sendFile(videoRequest.audioPath);
-    } catch (error) {
+    } catch (error: any) {
       return res.status(500).json({ error: error.message });
     }
   }
@@ -106,7 +112,7 @@ export class PocController {
       }
 
       console.log(`[PocController] Triggering render for ${requestId}`);
-      
+
       await this.renderVideoUseCase.execute(
         requestId,
         videoRequest.htmlContent,
@@ -114,12 +120,12 @@ export class PocController {
         videoRequest.audioPath || undefined,
       );
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Rendering started',
-        statusEndpoint: `/poc/status/${requestId}`
+        statusEndpoint: `/poc/status/${requestId}`,
       };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, error: error.message };
     }
   }
@@ -175,7 +181,7 @@ export class PocController {
         videoRequest,
         statusInfo: this.getStatusInfo(videoRequest.status),
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         error: error.message,
@@ -193,7 +199,7 @@ export class PocController {
         video,
         message: 'Video is ready! You can download it from the URL.',
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         error: error.message,
@@ -208,6 +214,7 @@ export class PocController {
     return {
       message: 'Job status tracking not implemented in POC',
       hint: 'Use /poc/status/:id to check video request status',
+      videoRequestId,
     };
   }
 
@@ -242,7 +249,7 @@ export class PocController {
   }
 
   private getStatusInfo(status: string): string {
-    const statusMap = {
+    const statusMap: Record<string, string> = {
       PENDING: '⏳ Waiting...',
       GENERATING_HTML: '🤖 AI is generating animation HTML...',
       PREVIEW_READY: '👀 Preview ready for review',

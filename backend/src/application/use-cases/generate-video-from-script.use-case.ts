@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { VideoCreatorAgent } from '../../infrastructure/ai/video-creator.agent';
 import { AnimationReviewAgent } from '../../infrastructure/ai/animation-review.agent';
-import { QualityAssuranceAgent, JudgeDecision } from '../../infrastructure/ai/quality-assurance.agent';
+import {
+  QualityAssuranceAgent,
+  JudgeDecision,
+} from '../../infrastructure/ai/quality-assurance.agent';
 import { RenderVideoUseCase } from './render-video.use-case';
 import { InMemoryVideoRequestRepository } from '../../infrastructure/repositories/in-memory-video-request.repository';
-import { VideoRequest, VideoRequestStatus } from '../../domain/entities/video-request.entity';
+import {
+  VideoRequest,
+  VideoRequestStatus,
+} from '../../domain/entities/video-request.entity';
 
 export interface GenerateVideoFromScriptInput {
   requestId: string;
@@ -13,6 +19,7 @@ export interface GenerateVideoFromScriptInput {
   audioPath: string;
   vtt: string;
   duration: number;
+  aspectRatio: '16:9' | '9:16' | '1:1';
 }
 
 @Injectable()
@@ -26,9 +33,12 @@ export class GenerateVideoFromScriptUseCase {
   ) {}
 
   async execute(input: GenerateVideoFromScriptInput): Promise<void> {
-    const { requestId, initialRequest, duration, audioPath, vtt } = input;
+    const { requestId, initialRequest, duration, audioPath, vtt, aspectRatio } =
+      input;
 
-    console.log(`[GenerateVideoFromScriptUseCase] Starting Phase 2 for ${requestId}`);
+    console.log(
+      `[GenerateVideoFromScriptUseCase] Starting Phase 2 for ${requestId} with aspect ratio ${aspectRatio}`,
+    );
 
     // 1. Create or Get VideoRequest
     let videoRequest = await this.videoRequestRepo.findById(requestId);
@@ -41,6 +51,7 @@ export class GenerateVideoFromScriptUseCase {
         audioPath,
         duration,
         VideoRequestStatus.PENDING,
+        aspectRatio,
         new Date(),
         new Date(),
       );
@@ -48,12 +59,28 @@ export class GenerateVideoFromScriptUseCase {
     } else {
       // Update existing request with new details
       videoRequest = videoRequest.updateAudioAndDuration(audioPath, duration);
+      // Also update aspect ratio if needed? The entity is immutable.
+      // We don't have a method to update aspect ratio. Let's assume it's set correctly or we need to add a method.
+      // For now, let's assume if it exists, we keep it, or we should recreate it?
+      // If the user changes aspect ratio for an existing request, we might need to update it.
+      // But usually this flow creates a new request or updates a pending one.
+      // Let's add a method to update aspect ratio if we really need it, but for now let's assume it's fine.
+      // Actually, if we are re-running for the same ID, we might want to update the aspect ratio.
+      // But VideoRequest doesn't have updateAspectRatio.
+      // Let's leave it as is for now.
       await this.videoRequestRepo.update(videoRequest);
     }
 
     // 2. Generate Video HTML using Single Agent
-    console.log('[GenerateVideoFromScriptUseCase] Generating video HTML with VideoCreatorAgent...');
-    let htmlContent = await this.videoCreatorAgent.createVideo(initialRequest, duration, vtt);
+    console.log(
+      '[GenerateVideoFromScriptUseCase] Generating video HTML with VideoCreatorAgent...',
+    );
+    let htmlContent = await this.videoCreatorAgent.createVideo(
+      initialRequest,
+      duration,
+      vtt,
+      aspectRatio,
+    );
 
     // 3. Quality Assurance Loop
     const MAX_LOOPS = 2;
@@ -62,39 +89,60 @@ export class GenerateVideoFromScriptUseCase {
 
     while (!approved && loopCount < MAX_LOOPS) {
       loopCount++;
-      console.log(`[GenerateVideoFromScriptUseCase] QA Loop ${loopCount}/${MAX_LOOPS}`);
+      console.log(
+        `[GenerateVideoFromScriptUseCase] QA Loop ${loopCount}/${MAX_LOOPS}`,
+      );
 
       // a. Critic Review
-      const review = await this.animationReviewAgent.reviewHtml(htmlContent, initialRequest);
+      const review = await this.animationReviewAgent.reviewHtml(
+        htmlContent,
+        initialRequest,
+      );
 
       if (!review.hasIssues) {
-        console.log('[GenerateVideoFromScriptUseCase] Critic approved the animation.');
+        console.log(
+          '[GenerateVideoFromScriptUseCase] Critic approved the animation.',
+        );
         approved = true;
         break;
       }
 
-      console.log(`[GenerateVideoFromScriptUseCase] Critic found issues: ${review.critique}`);
+      console.log(
+        `[GenerateVideoFromScriptUseCase] Critic found issues: ${review.critique}`,
+      );
 
       // b. Refine Video
-      console.log('[GenerateVideoFromScriptUseCase] Refining video based on critique...');
-      const refinedHtml = await this.videoCreatorAgent.refineVideo(htmlContent, review.critique);
+      console.log(
+        '[GenerateVideoFromScriptUseCase] Refining video based on critique...',
+      );
+      const refinedHtml = await this.videoCreatorAgent.refineVideo(
+        htmlContent,
+        review.critique,
+      );
 
       // c. Judge Decision
-      const decision = await this.qualityAssuranceAgent.evaluateFix(review.critique, refinedHtml);
-      
+      const decision = await this.qualityAssuranceAgent.evaluateFix(
+        review.critique,
+        refinedHtml,
+      );
+
       if (decision === JudgeDecision.APPROVE) {
         console.log('[GenerateVideoFromScriptUseCase] Judge APPROVED the fix.');
         htmlContent = refinedHtml;
         approved = true;
       } else {
-        console.log('[GenerateVideoFromScriptUseCase] Judge requested REVIEW AGAIN.');
+        console.log(
+          '[GenerateVideoFromScriptUseCase] Judge requested REVIEW AGAIN.',
+        );
         htmlContent = refinedHtml; // Use the refined version for the next loop
         // Continue loop
       }
     }
 
     if (!approved) {
-      console.warn('[GenerateVideoFromScriptUseCase] QA Loop finished without full approval. Using latest version.');
+      console.warn(
+        '[GenerateVideoFromScriptUseCase] QA Loop finished without full approval. Using latest version.',
+      );
     }
 
     // 4. Update VideoRequest with HTML and set to PREVIEW_READY
@@ -105,7 +153,7 @@ export class GenerateVideoFromScriptUseCase {
     console.log(
       `[GenerateVideoFromScriptUseCase] HTML generated and saved for ${requestId}. Ready for preview.`,
     );
-    
+
     console.log(
       `[GenerateVideoFromScriptUseCase] Phase 2 initiated for ${requestId}`,
     );

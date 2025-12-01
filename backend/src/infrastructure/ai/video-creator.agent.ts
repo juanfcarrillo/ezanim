@@ -24,11 +24,12 @@ export class VideoCreatorAgent {
     userPrompt: string,
     duration: number = 15,
     vtt?: string,
+    aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
   ): Promise<string> {
-    console.log('[VideoCreatorAgent] Creating video for prompt:', userPrompt);
+    console.log(`[VideoCreatorAgent] Creating video for prompt: "${userPrompt}" with aspect ratio: ${aspectRatio}`);
 
     if (!this.aiProvider) {
-      return this.getMockHtml(userPrompt);
+      return this.getMockHtml(userPrompt, aspectRatio);
     }
 
     try {
@@ -47,20 +48,25 @@ Format: A single HTML file containing all necessary CSS and JS.
 Libraries:
 - Use Anime.js (v3.2.1 via CDN) for all animations.
 - Use FontAwesome (v6.4.0 via CDN) for icons.
-- Illustrations: Use inline SVGs for main visuals.
+- Use Google Fonts: Import 'Poppins' (weights 400, 600, 800) and 'Roboto' (400, 500) for professional typography.
+- Illustrations: Use detailed, multi-colored inline SVGs for main visuals. Avoid simple geometric shapes unless abstract.
 
 Visual Structure (Full Screen Cinematic):
 - The animation must occupy the entire viewport (100vw, 100vh).
+- The layout must be optimized for a **${aspectRatio}** aspect ratio.
 - No visible video player controls (play button, progress bar, etc.) should be rendered.
+- CRITICAL: Do NOT include any "Click to Start", "Play", or "Start Learning" overlays, buttons, or splash screens. The video should be purely the animation content visible from the start.
 - Stage: The entire body is the stage. Use absolute positioning for elements relative to the viewport.
-- Subtitles: A clean, cinematic subtitle overlay at the bottom center, with a semi-transparent background for readability.
+- Subtitles: A clean, cinematic subtitle overlay at the bottom center, with a semi-transparent background for readability. Use 'Roboto' font.
+- Typography: Use 'Poppins' for headings and 'Roboto' for body text.
 
 Animation Style:
 
 - Use anime.timeline() to sequence the entire story.
-- Dynamic Entrances: Elements should not just fade in. Make them fall from the top with a bounce effect (easing: 'easeOutBounce') or slide in dynamically to create a fun, "physics-based" feel.
-- Micro-interactions: Use anime.stagger to animate groups of elements (e.g., if there are multiple items, do not drop them all at once; drop them with a slight delay between each).
-- Colors: Use CSS variables (:root) for a coherent, vibrant color palette on a dark background.
+- Easing: Use 'easeOutExpo' for snappy entrances and 'easeInOutQuad' for smooth transitions. Avoid excessive bouncing unless playful.
+- Dynamic Entrances: Elements should slide in, scale up, or morph.
+- Micro-interactions: Use anime.stagger(100) to animate groups of elements (e.g., lists, particles) for a premium feel.
+- Colors: Use a professional color palette (e.g., Deep Blue & Vibrant Orange, or Dark Mode with Neon accents). Use CSS variables.
 
 Animation Script (The Scenes):
 - Scene 1 (The Setup/Problem): Describe what elements fall in and what the initial state is.
@@ -130,7 +136,10 @@ Return ONLY the corrected HTML code.`;
     }
   }
 
-  private getMockHtml(topic: string): string {
+  private getMockHtml(
+    topic: string,
+    aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
+  ): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -146,11 +155,13 @@ Return ONLY the corrected HTML code.`;
         }
         body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; background: var(--bg-dark); font-family: sans-serif; color: var(--text); display: flex; justify-content: center; align-items: center; }
         .element { font-size: 4rem; position: absolute; opacity: 0; }
+        .info { position: absolute; bottom: 20px; right: 20px; font-size: 1rem; opacity: 0.5; }
     </style>
 </head>
 <body>
     <div class="element el-1">MOCK MODE</div>
     <div class="element el-2" style="top: 60%">${topic}</div>
+    <div class="info">Aspect Ratio: ${aspectRatio}</div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <script>

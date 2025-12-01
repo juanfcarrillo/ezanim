@@ -5,6 +5,7 @@ interface VideoPlayerProps {
   htmlContent?: string;
   videoUrl?: string;
   requestId?: string;
+  aspectRatio?: '16:9' | '9:16' | '1:1';
   onRegenerate?: () => void;
 }
 
@@ -12,6 +13,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   htmlContent, 
   videoUrl,
   requestId,
+  aspectRatio = '16:9',
   onRegenerate 
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -21,6 +23,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
+  const { width: originalWidth, height: originalHeight } = useMemo(() => {
+    switch (aspectRatio) {
+      case '9:16':
+        return { width: 1080, height: 1920 };
+      case '1:1':
+        return { width: 1080, height: 1080 };
+      case '16:9':
+      default:
+        return { width: 1920, height: 1080 };
+    }
+  }, [aspectRatio]);
 
   // Generate audio URL when requestId is available
   const audioUrl = useMemo(() => {
@@ -39,10 +53,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
-        
-        // Original dimensions of the HTML content
-        const originalWidth = 1920;
-        const originalHeight = 1080;
         
         // Calculate scale to fit
         const scaleX = containerWidth / originalWidth;
@@ -74,7 +84,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       window.removeEventListener('resize', updateScale);
       clearTimeout(timer);
     };
-  }, [htmlContent]);
+  }, [htmlContent, originalWidth, originalHeight]);
 
   // Inject control script into HTML content and fix viewport scaling
   const enhancedHtmlContent = useMemo(() => {
@@ -87,8 +97,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const styleInjection = `
       <style>
         html, body {
-          width: 1920px !important;
-          height: 1080px !important;
+          width: ${originalWidth}px !important;
+          height: ${originalHeight}px !important;
           max-width: none !important;
           max-height: none !important;
           overflow: hidden !important;
@@ -136,7 +146,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     modifiedHtml = modifiedHtml.replace('</body>', `${controlScript}</body>`);
 
     return modifiedHtml;
-  }, [htmlContent]);
+  }, [htmlContent, originalWidth, originalHeight]);
 
   const togglePlayHtml = () => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -204,7 +214,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <p>HTML Animation with Anime.js</p>
         </div>
         
-        <div className="video-player-container" ref={containerRef}>
+        <div 
+          className="video-player-container" 
+          ref={containerRef}
+          style={{ aspectRatio: aspectRatio.replace(':', '/') }}
+        >
           <iframe
             ref={iframeRef}
             srcDoc={enhancedHtmlContent}
@@ -263,7 +277,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <p>Rendered with audio</p>
         </div>
         
-        <div className="video-player-container">
+        <div 
+          className="video-player-container"
+          style={{ aspectRatio: aspectRatio.replace(':', '/') }}
+        >
           <video
             ref={videoRef}
             className="video-element"

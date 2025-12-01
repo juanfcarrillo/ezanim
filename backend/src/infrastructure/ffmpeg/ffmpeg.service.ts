@@ -55,8 +55,8 @@ export class FFmpegService {
         .videoCodec('libx264')
         .outputOptions([
           '-pix_fmt yuv420p', // Compatibility with most players
-          '-preset fast', // Encoding speed
-          '-crf 23', // Quality (lower = better, 23 is default)
+          '-preset medium', // Better compression/quality balance than 'fast'
+          '-crf 18', // High quality (visually lossless)
         ])
         .output(outputPath)
         .on('start', (commandLine) => {
