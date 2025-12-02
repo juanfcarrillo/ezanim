@@ -17,6 +17,7 @@ import { FFmpegService } from './infrastructure/ffmpeg/ffmpeg.service';
 import { R2StorageService } from './infrastructure/storage/r2-storage.service';
 import { QueueService } from './infrastructure/queue/queue.service';
 import { VideoRenderProcessor } from './infrastructure/queue/video-render.processor';
+import { VideoCreationProcessor } from './infrastructure/queue/video-creation.processor';
 import { VideoCreatorAgent } from './infrastructure/ai/video-creator.agent';
 import { AnimationReviewAgent } from './infrastructure/ai/animation-review.agent';
 import { QualityAssuranceAgent } from './infrastructure/ai/quality-assurance.agent';
@@ -41,6 +42,9 @@ import { RefineAnimationHtmlUseCase } from './application/use-cases/refine-anima
     }),
     BullModule.registerQueue({
       name: 'video-render',
+    }),
+    BullModule.registerQueue({
+      name: 'video-creation',
     }),
   ],
   controllers: [VideoRequestController, VideoController, PocController, FilesController],
@@ -71,6 +75,7 @@ import { RefineAnimationHtmlUseCase } from './application/use-cases/refine-anima
     ScriptGenerationAgent,
     // Processors
     VideoRenderProcessor,
+    VideoCreationProcessor,
   ],
 })
 export class AppModule {}

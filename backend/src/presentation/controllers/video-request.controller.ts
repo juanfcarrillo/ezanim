@@ -6,18 +6,19 @@ import {
   Param,
   ValidationPipe,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { CreateVideoRequestDto } from '@application/dtos/create-video-request.dto';
 import { VideoRequestResponseDto } from '@application/dtos/video-request-response.dto';
 import { GenerateAnimationHtmlUseCase } from '@application/use-cases/generate-animation-html.use-case';
 import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case';
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
-import { GenerateScriptAndAudioUseCase } from '@application/use-cases/generate-script-and-audio.use-case';
-import { GenerateVideoFromScriptUseCase } from '@application/use-cases/generate-video-from-script.use-case';
 import { RefineAnimationHtmlUseCase } from '@application/use-cases/refine-animation-html.use-case';
-import { ElevenLabsService } from '../../infrastructure/elevenlabs/elevenlabs.service';
-import { TranscriptionService } from '../../infrastructure/transcription/transcription.service';
-import * as fs from 'fs';
-import * as path from 'path';
+import { InMemoryVideoRequestRepository } from '../../infrastructure/repositories/in-memory-video-request.repository';
+import {
+  VideoRequest,
+  VideoRequestStatus,
+} from '../../domain/entities/video-request.entity';
 import * as crypto from 'crypto';
 
 @Controller('video-requests')
@@ -26,11 +27,9 @@ export class VideoRequestController {
     private readonly generateAnimationHtmlUseCase: GenerateAnimationHtmlUseCase,
     private readonly renderVideoUseCase: RenderVideoUseCase,
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
-    private readonly generateScriptAndAudioUseCase: GenerateScriptAndAudioUseCase,
-    private readonly generateVideoFromScriptUseCase: GenerateVideoFromScriptUseCase,
     private readonly refineAnimationHtmlUseCase: RefineAnimationHtmlUseCase,
-    private readonly elevenLabsService: ElevenLabsService,
-    private readonly transcriptionService: TranscriptionService,
+    private readonly videoRequestRepo: InMemoryVideoRequestRepository,
+    @InjectQueue('video-creation') private readonly videoCreationQueue: Queue,
   ) {}
 
   @Post('refine')
@@ -54,129 +53,40 @@ export class VideoRequestController {
       `[VideoRequestController] Starting full video creation for: "${body.prompt}" with aspect ratio: ${body.aspectRatio || '16:9'}`,
     );
 
-    // 1. Phase 1: Generate Script, Audio, and Transcription
-    const phase1Result = await this.generateScriptAndAudioUseCase.execute(
-      body.prompt,
-    );
-    
-    // Save audio to temp file
-    const audioDir = path.join(
-      process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
-      'audio',
-    );
-    if (!fs.existsSync(audioDir)) {
-      fs.mkdirSync(audioDir, { recursive: true });
-    }
-    
     const requestId = crypto.randomUUID();
-    const audioPath = path.join(audioDir, `${requestId}.mp3`);
-    fs.writeFileSync(audioPath, phase1Result.audioBuffer);
-    
-    console.log(`[VideoRequestController] Audio saved to: ${audioPath}`);
+    const aspectRatio = body.aspectRatio || '16:9';
 
-    // Calculate duration
-    const duration =
-      phase1Result.words.length > 0
-        ? phase1Result.words[phase1Result.words.length - 1].end + 2
-        : 20; // Default fallback
-
-    // 2. Phase 2: Generate Video HTML and Prepare for Render
-    await this.generateVideoFromScriptUseCase.execute({
+    // 1. Create initial VideoRequest record
+    const videoRequest = new VideoRequest(
       requestId,
-      initialRequest: body.prompt,
-      script: phase1Result.script,
-      audioPath,
-      vtt: phase1Result.vtt,
-      duration,
-      aspectRatio: body.aspectRatio || '16:9',
+      body.prompt,
+      null, // script
+      null, // htmlContent
+      null, // audioPath
+      0, // duration
+      VideoRequestStatus.PENDING,
+      aspectRatio,
+      new Date(),
+      new Date(),
+    );
+    await this.videoRequestRepo.save(videoRequest);
+
+    // 2. Add job to queue
+    await this.videoCreationQueue.add('create-video', {
+      requestId,
+      prompt: body.prompt,
+      aspectRatio,
     });
+
+    console.log(
+      `[VideoRequestController] Job added to queue for request: ${requestId}`,
+    );
 
     return {
       success: true,
       requestId,
-      message: 'Full video creation pipeline started',
-      data: {
-        prompt: body.prompt,
-        script: phase1Result.script,
-        duration,
-        audioPath,
-        aspectRatio: body.aspectRatio || '16:9',
-      },
-      endpoints: {
-        status: `/poc/status/${requestId}`,
-        preview: `/poc/preview/${requestId}`,
-        render: `/poc/render/${requestId}`,
-      },
+      message: 'Video creation started in background',
     };
-  }
-
-  @Post('create-from-mock')
-  async createFromMock() {
-    // 1. Read Mock File
-    const mockFilePath = path.join(
-      process.cwd(),
-      '../samples/facade-pattern/parametters.txt',
-    );
-    const content = fs.readFileSync(mockFilePath, 'utf-8');
-
-    // 2. Parse Content
-    const requestMatch = content.match(/Request: (.*)/);
-    const scriptMatch = content.match(/Elevenlabs script: ([\s\S]*)/);
-
-    if (!requestMatch || !scriptMatch) {
-      throw new Error('Invalid mock file format');
-    }
-
-    const initialRequest = requestMatch[1].trim();
-    const script = scriptMatch[1].trim();
-
-    // 3. Generate Audio
-    console.log('Generating audio from mock script...');
-    const audioBuffer = await this.elevenLabsService.generateAudio(script);
-
-    // Save audio to temp file for rendering later
-    const audioDir = path.join(
-      process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
-      'audio',
-    );
-    if (!fs.existsSync(audioDir)) {
-      fs.mkdirSync(audioDir, { recursive: true });
-    }
-    const requestId = crypto.randomUUID();
-    const audioPath = path.join(audioDir, `${requestId}.mp3`);
-    fs.writeFileSync(audioPath, audioBuffer);
-
-    // 4. Transcribe
-    console.log('Transcribing audio...');
-    const { vtt, words } =
-      await this.transcriptionService.transcribeAudio(audioBuffer);
-
-    // Calculate duration from words or audio file (approx)
-    const duration = words.length > 0 ? words[words.length - 1].end + 2 : 30; // Add buffer
-
-    // 5. Execute Phase 2
-    console.log('Executing Phase 2...');
-    await this.generateVideoFromScriptUseCase.execute({
-      requestId,
-      initialRequest,
-      script,
-      audioPath,
-      vtt,
-      duration,
-      aspectRatio: '16:9',
-    });
-
-    return {
-      message: 'Video creation started from mock',
-      requestId,
-      initialRequest,
-      script,
-    };
-  }
-
-  @Post('generate-script-audio')
-  async generateScriptAudio(@Body() body: { prompt: string }) {
-    return await this.generateScriptAndAudioUseCase.execute(body.prompt);
   }
 
   @Post('generate')
