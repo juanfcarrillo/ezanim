@@ -29,7 +29,7 @@ export class VideoCreatorAgent {
     console.log(`[VideoCreatorAgent] Creating video for prompt: "${userPrompt}" with aspect ratio: ${aspectRatio}`);
 
     if (!this.aiProvider) {
-      return this.getMockHtml(userPrompt, aspectRatio);
+      throw new Error('No AI provider configured');
     }
 
     try {
@@ -92,7 +92,7 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
       return html.trim();
     } catch (error) {
       console.error('[VideoCreatorAgent] AI API error:', error);
-      return this.getMockHtml(userPrompt);
+      throw error;
     }
   }
 
@@ -100,7 +100,7 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
     console.log('[VideoCreatorAgent] Refining video based on critique...');
 
     if (!this.aiProvider) {
-      return currentHtml;
+      throw new Error('No AI provider configured');
     }
 
     try {
@@ -132,7 +132,7 @@ Return ONLY the corrected HTML code.`;
       return html.trim();
     } catch (error) {
       console.error('[VideoCreatorAgent] Error refining video:', error);
-      return currentHtml;
+      throw error;
     }
   }
 

@@ -253,6 +253,7 @@ export class PocController {
       PENDING: '⏳ Waiting...',
       GENERATING_HTML: '🤖 AI is generating animation HTML...',
       PREVIEW_READY: '👀 Preview ready for review',
+      QA_COMPLETED: '✨ QA Cycle Completed (Judge Approved)',
       RENDERING: '🎬 Rendering video (capturing frames & encoding)...',
       COMPLETED: '✅ Video is ready!',
       FAILED: '❌ Something went wrong',

@@ -161,10 +161,11 @@ export class GenerateVideoFromScriptUseCase {
 
     // 4. Final Update (Status is already PREVIEW_READY, but ensure content is latest)
     videoRequest = videoRequest.updateHtmlContent(htmlContent);
+    videoRequest = videoRequest.updateStatus(VideoRequestStatus.QA_COMPLETED);
     await this.videoRequestRepo.update(videoRequest);
 
     console.log(
-      `[GenerateVideoFromScriptUseCase] HTML generated and saved for ${requestId}. Ready for preview.`,
+      `[GenerateVideoFromScriptUseCase] HTML generated and saved for ${requestId}. QA Completed.`,
     );
   }
 }

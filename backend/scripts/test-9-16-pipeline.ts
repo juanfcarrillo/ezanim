@@ -58,12 +58,26 @@ async function runs() {
         );
         const statusData = (await statusRes.json()) as StatusResponse;
 
+        console.log(`Status: ${statusData.videoRequest?.status}`);
+
         if (
           statusData.videoRequest &&
-          statusData.videoRequest.status === 'PREVIEW_READY'
+          (statusData.videoRequest.status === 'QA_COMPLETED' ||
+            statusData.videoRequest.status === 'PREVIEW_READY')
         ) {
-          console.log('\n[TEST] Preview is READY!');
-          break;
+          // If we want to wait for QA to finish, we should prefer QA_COMPLETED.
+          // But for now let's accept either so the test doesn't hang if I messed up the logic.
+          // Actually, let's wait for QA_COMPLETED specifically if we want to test that.
+          // But if the user wants to see the preview ASAP, PREVIEW_READY is enough.
+          // Let's wait for QA_COMPLETED to be sure the new status works.
+
+          if (statusData.videoRequest.status === 'QA_COMPLETED') {
+            console.log('\n[TEST] QA Cycle Completed! Ready to render.');
+            break;
+          }
+
+          // Optional: If it stays in PREVIEW_READY for too long, maybe we should break?
+          // For this test, let's just log and wait.
         }
         process.stdout.write('.');
         attempts++;
