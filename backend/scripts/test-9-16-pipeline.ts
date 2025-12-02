@@ -59,6 +59,11 @@ async function runs() {
         const statusData = (await statusRes.json()) as StatusResponse;
 
         console.log(`Status: ${statusData.videoRequest?.status}`);
+        if (statusData.videoRequest?.htmlVersionId) {
+          console.log(
+            `HTML Version ID: ${statusData.videoRequest.htmlVersionId}`,
+          );
+        }
 
         if (
           statusData.videoRequest &&

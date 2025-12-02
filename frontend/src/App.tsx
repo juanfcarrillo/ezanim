@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import './App.css'
 import { VideoPlayer } from './components/VideoPlayer'
 import { VideoRequestForm } from './components/VideoRequestForm'
@@ -10,6 +10,7 @@ type AppState = 'idle' | 'loading' | 'preview' | 'rendering' | 'completed';
 interface VideoData {
   requestId: string;
   htmlContent?: string;
+  htmlVersionId?: string;
   videoUrl?: string;
   script?: string;
   aspectRatio?: '16:9' | '9:16' | '1:1';
@@ -20,6 +21,7 @@ function App() {
   const [videoData, setVideoData] = useState<VideoData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
+  const lastHtmlVersionIdRef = useRef<string | null>(null);
 
   // Configure your backend URL
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
@@ -27,6 +29,7 @@ function App() {
   const handleVideoRequest = async (prompt: string, aspectRatio: '16:9' | '9:16' | '1:1') => {
     setState('loading');
     setError(null);
+    lastHtmlVersionIdRef.current = null;
 
     try {
       // Call backend to create video
@@ -63,26 +66,38 @@ function App() {
       if (!isPreviewActive) return;
 
       try {
-        const response = await fetch(`${BACKEND_URL}/poc/preview/${requestId}`);
+        const response = await fetch(`${BACKEND_URL}/poc/status/${requestId}`);
         
         if (response.ok) {
-          const htmlContent = await response.text();
+          const data = await response.json();
+          const videoRequest = data.videoRequest;
           
-          // Update state with new content
-          setVideoData(prev => {
-            // Only update if content changed to avoid re-renders
-            if (prev?.htmlContent === htmlContent) return prev;
-            return {
-              requestId,
-              htmlContent,
-              aspectRatio,
-            };
-          });
-          
-          setState('preview');
+          if (videoRequest && videoRequest.htmlContent) {
+            // Update state with new content only if version ID changed
+            if (lastHtmlVersionIdRef.current !== videoRequest.htmlVersionId) {
+              console.log(
+                'New HTML version detected:',
+                videoRequest.htmlVersionId,
+              );
+              lastHtmlVersionIdRef.current = videoRequest.htmlVersionId;
+
+              setVideoData({
+                requestId,
+                htmlContent: videoRequest.htmlContent,
+                htmlVersionId: videoRequest.htmlVersionId,
+                aspectRatio,
+              });
+
+              setState('preview');
+            }
+          }
           
           // Continue polling for updates (refinements) every 2 seconds
-          setTimeout(poll, 2000);
+          // Stop polling if completed or failed? Maybe keep polling for refinements if that's the flow.
+          // But usually COMPLETED means video is done.
+          if (videoRequest.status !== 'COMPLETED' && videoRequest.status !== 'FAILED') {
+             setTimeout(poll, 2000);
+          }
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 1000);
@@ -143,6 +158,7 @@ function App() {
   const handleRegenerate = () => {
     setVideoData(null);
     setState('idle');
+    lastHtmlVersionIdRef.current = null;
   };
 
   return (

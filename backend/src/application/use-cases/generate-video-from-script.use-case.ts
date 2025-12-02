@@ -48,6 +48,7 @@ export class GenerateVideoFromScriptUseCase {
         initialRequest,
         null,
         null, // htmlContent
+        null, // htmlVersionId
         audioPath,
         duration,
         VideoRequestStatus.PENDING,

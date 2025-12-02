@@ -60,8 +60,9 @@ export class VideoRequestController {
     const videoRequest = new VideoRequest(
       requestId,
       body.prompt,
-      null, // script
+      null, // refinedPrompt
       null, // htmlContent
+      null, // htmlVersionId
       null, // audioPath
       0, // duration
       VideoRequestStatus.PENDING,
