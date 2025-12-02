@@ -23,7 +23,7 @@ interface RenderResponse {
 
 async function runs() {
   const prompt =
-    'explica la importancia de la comunicacion en la industria del software como si fuera para niños';
+    '¿Es el "Clean Code" una estafa? ¿Escribir código "limpio" hace que el software sea lento? (Referencia a la polémica de Casey Muratori)';
   const aspectRatio = '9:16';
 
   console.log(`Sending full video creation request (${aspectRatio})...`);

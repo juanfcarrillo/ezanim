@@ -3,6 +3,7 @@ import './App.css'
 import { VideoPlayer } from './components/VideoPlayer'
 import { VideoRequestForm } from './components/VideoRequestForm'
 import { LoadingState } from './components/LoadingState'
+import { RevisionChat } from './components/RevisionChat'
 
 type AppState = 'idle' | 'loading' | 'preview' | 'rendering' | 'completed';
 
@@ -18,6 +19,7 @@ function App() {
   const [state, setState] = useState<AppState>('idle');
   const [videoData, setVideoData] = useState<VideoData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isRefining, setIsRefining] = useState(false);
 
   // Configure your backend URL
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
@@ -83,6 +85,36 @@ function App() {
     poll();
   };
 
+  const handleRefine = async (critique: string) => {
+    if (!videoData?.htmlContent) return;
+    
+    setIsRefining(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/video-requests/refine`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          htmlContent: videoData.htmlContent,
+          critique,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to refine video');
+      }
+
+      const data = await response.json();
+      setVideoData((prev) => prev ? { ...prev, htmlContent: data.htmlContent } : null);
+    } catch (err) {
+      console.error('Refinement error:', err);
+      throw err; // Propagate to chat component
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   const handleRegenerate = () => {
     setVideoData(null);
     setState('idle');
@@ -97,58 +129,48 @@ function App() {
       
       <main className="content-wrapper">
         {/* Request Form - Always visible on the left */}
-        <div>
+        <div className="left-panel">
           <VideoRequestForm 
-            onSubmit={handleVideoRequest}
-            isLoading={state === 'loading'}
+            onSubmit={handleVideoRequest} 
+            isLoading={state === 'loading'} 
           />
           
-          {error && (
-            <div className="glass error-message" style={{ 
-              marginTop: '1rem', 
-              padding: '1rem', 
-              background: 'rgba(239, 68, 68, 0.2)',
-              borderColor: 'rgba(239, 68, 68, 0.4)'
-            }}>
-              <p style={{ color: 'white', margin: 0 }}>⚠️ {error}</p>
+          {state === 'preview' && (
+            <div className="chat-container">
+              <RevisionChat onRefine={handleRefine} isRefining={isRefining} />
             </div>
           )}
         </div>
 
-        {/* Right side - State based content */}
-        <div>
+        {/* Right Panel - Video Player or Loading State */}
+        <div className="right-panel">
           {state === 'idle' && (
-            <VideoPlayer />
+            <div className="placeholder-state">
+              <div className="placeholder-icon">🎬</div>
+              <h3>Ready to Create</h3>
+              <p>Enter a topic on the left to generate your video</p>
+            </div>
           )}
 
           {state === 'loading' && (
-            <LoadingState 
-              stage="Creating Video"
-              message="Generating script, audio, and animations..."
+            <LoadingState message="Generating script, audio, and animation..." />
+          )}
+
+          {state === 'preview' && videoData?.htmlContent && (
+            <VideoPlayer 
+              htmlContent={videoData.htmlContent}
+              aspectRatio={videoData.aspectRatio || '16:9'}
             />
           )}
 
-          {(state === 'preview' || state === 'rendering' || state === 'completed') && videoData && (
-            <VideoPlayer 
-              htmlContent={videoData.htmlContent}
-              videoUrl={videoData.videoUrl}
-              requestId={videoData.requestId}
-              aspectRatio={videoData.aspectRatio}
-              onRegenerate={handleRegenerate}
-            />
+          {error && (
+            <div className="error-message">
+              <p>Error: {error}</p>
+              <button onClick={handleRegenerate}>Try Again</button>
+            </div>
           )}
         </div>
       </main>
-
-      <footer style={{ 
-        textAlign: 'center', 
-        marginTop: '4rem', 
-        padding: '2rem',
-        color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: '0.9rem'
-      }}>
-        <p>Powered by NestJS • Puppeteer • Anime.js • ElevenLabs</p>
-      </footer>
     </div>
   )
 }

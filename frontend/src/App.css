@@ -35,15 +35,67 @@
   grid-template-columns: 1fr;
   width: 100%;
   box-sizing: border-box;
+  height: calc(100vh - 200px); /* Fixed height for chat scrolling */
 }
 
 @media (min-width: 1024px) {
   .content-wrapper {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 400px 1fr; /* Fixed width for left panel */
     gap: 2rem;
   }
 }
 
-.full-width {
-  grid-column: 1 / -1;
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+  overflow: hidden;
 }
+
+.chat-container {
+  flex: 1;
+  min-height: 0; /* Important for nested flex scrolling */
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.right-panel {
+  background: #2d3436;
+  border-radius: 16px;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
+  position: relative;
+  overflow: hidden;
+}
+
+.placeholder-state {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.placeholder-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.error-message {
+  text-align: center;
+  color: #ff7675;
+}
+
+.error-message button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #d63031;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+

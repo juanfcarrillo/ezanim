@@ -25,6 +25,7 @@ import { ElevenLabsService } from './infrastructure/elevenlabs/elevenlabs.servic
 import { TranscriptionService } from './infrastructure/transcription/transcription.service';
 import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-script-and-audio.use-case';
 import { GenerateVideoFromScriptUseCase } from './application/use-cases/generate-video-from-script.use-case';
+import { RefineAnimationHtmlUseCase } from './application/use-cases/refine-animation-html.use-case';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { GenerateVideoFromScriptUseCase } from './application/use-cases/generate
     GetVideoUseCase,
     GenerateScriptAndAudioUseCase,
     GenerateVideoFromScriptUseCase,
+    RefineAnimationHtmlUseCase,
     // Repositories
     InMemoryVideoRequestRepository,
     InMemoryAnimationElementRepository,

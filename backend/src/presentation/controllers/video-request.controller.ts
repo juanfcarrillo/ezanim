@@ -13,6 +13,7 @@ import { RenderVideoUseCase } from '@application/use-cases/render-video.use-case
 import { GetVideoRequestUseCase } from '@application/use-cases/get-video-request.use-case';
 import { GenerateScriptAndAudioUseCase } from '@application/use-cases/generate-script-and-audio.use-case';
 import { GenerateVideoFromScriptUseCase } from '@application/use-cases/generate-video-from-script.use-case';
+import { RefineAnimationHtmlUseCase } from '@application/use-cases/refine-animation-html.use-case';
 import { ElevenLabsService } from '../../infrastructure/elevenlabs/elevenlabs.service';
 import { TranscriptionService } from '../../infrastructure/transcription/transcription.service';
 import * as fs from 'fs';
@@ -27,9 +28,19 @@ export class VideoRequestController {
     private readonly getVideoRequestUseCase: GetVideoRequestUseCase,
     private readonly generateScriptAndAudioUseCase: GenerateScriptAndAudioUseCase,
     private readonly generateVideoFromScriptUseCase: GenerateVideoFromScriptUseCase,
+    private readonly refineAnimationHtmlUseCase: RefineAnimationHtmlUseCase,
     private readonly elevenLabsService: ElevenLabsService,
     private readonly transcriptionService: TranscriptionService,
   ) {}
+
+  @Post('refine')
+  async refine(@Body() body: { htmlContent: string; critique: string }) {
+    const refinedHtml = await this.refineAnimationHtmlUseCase.execute(
+      body.htmlContent,
+      body.critique,
+    );
+    return { htmlContent: refinedHtml };
+  }
 
   @Post('create-full')
   async createFullVideo(
