@@ -55,34 +55,59 @@ function App() {
   };
 
   const pollForPreview = async (requestId: string, aspectRatio: '16:9' | '9:16' | '1:1') => {
-    const maxAttempts = 30; // 30 seconds
+    const maxAttempts = 120; // 2 minutes max wait for initial draft
     let attempts = 0;
+    let isPreviewActive = true;
 
     const poll = async () => {
+      if (!isPreviewActive) return;
+
       try {
         const response = await fetch(`${BACKEND_URL}/poc/preview/${requestId}`);
         
         if (response.ok) {
           const htmlContent = await response.text();
-          setVideoData({
-            requestId,
-            htmlContent,
-            aspectRatio,
+          
+          // Update state with new content
+          setVideoData(prev => {
+            // Only update if content changed to avoid re-renders
+            if (prev?.htmlContent === htmlContent) return prev;
+            return {
+              requestId,
+              htmlContent,
+              aspectRatio,
+            };
           });
+          
           setState('preview');
+          
+          // Continue polling for updates (refinements) every 2 seconds
+          setTimeout(poll, 2000);
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 1000);
         } else {
-          throw new Error('Timeout waiting for preview');
+          // Only throw timeout if we never got ANY content
+          if (state !== 'preview') {
+            throw new Error('Timeout waiting for preview');
+          }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load preview');
-        setState('idle');
+        // If we already have a preview, just log error and retry later (maybe server is busy)
+        if (state === 'preview') {
+          console.warn('Poll failed, retrying...', err);
+          setTimeout(poll, 5000);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load preview');
+          setState('idle');
+        }
       }
     };
 
     poll();
+    
+    // Cleanup function to stop polling if component unmounts or request changes
+    return () => { isPreviewActive = false; };
   };
 
   const handleRefine = async (critique: string) => {

@@ -163,6 +163,14 @@ export class VideoRenderProcessor extends WorkerHost {
       );
     } catch (error) {
       console.error('[VideoRenderProcessor] Job failed:', error);
+      
+      // Log error to file for debugging
+      const logDir = path.join(process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim', 'logs');
+      await fs.mkdir(logDir, { recursive: true });
+      await fs.writeFile(
+        path.join(logDir, `${videoRequestId}-error.log`),
+        `Error: ${error}\nStack: ${error instanceof Error ? error.stack : ''}`
+      );
 
       // Mark as failed
       const videoRequest = await this.videoRequestRepo.findById(videoRequestId);

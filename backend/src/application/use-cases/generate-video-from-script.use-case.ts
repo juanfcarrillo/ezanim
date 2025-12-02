@@ -82,6 +82,14 @@ export class GenerateVideoFromScriptUseCase {
       aspectRatio,
     );
 
+    // Save initial draft immediately for preview
+    videoRequest = videoRequest.updateHtmlContent(htmlContent);
+    videoRequest = videoRequest.updateStatus(VideoRequestStatus.PREVIEW_READY);
+    await this.videoRequestRepo.update(videoRequest);
+    console.log(
+      `[GenerateVideoFromScriptUseCase] Initial HTML draft saved for ${requestId}`,
+    );
+
     // 3. Quality Assurance Loop
     const MAX_LOOPS = 2;
     let loopCount = 0;
@@ -120,6 +128,14 @@ export class GenerateVideoFromScriptUseCase {
         review.critique,
       );
 
+      // Save refined version immediately
+      htmlContent = refinedHtml;
+      videoRequest = videoRequest.updateHtmlContent(htmlContent);
+      await this.videoRequestRepo.update(videoRequest);
+      console.log(
+        `[GenerateVideoFromScriptUseCase] Refined HTML saved for ${requestId} (Loop ${loopCount})`,
+      );
+
       // c. Judge Decision
       const decision = await this.qualityAssuranceAgent.evaluateFix(
         review.critique,
@@ -128,13 +144,11 @@ export class GenerateVideoFromScriptUseCase {
 
       if (decision === JudgeDecision.APPROVE) {
         console.log('[GenerateVideoFromScriptUseCase] Judge APPROVED the fix.');
-        htmlContent = refinedHtml;
         approved = true;
       } else {
         console.log(
           '[GenerateVideoFromScriptUseCase] Judge requested REVIEW AGAIN.',
         );
-        htmlContent = refinedHtml; // Use the refined version for the next loop
         // Continue loop
       }
     }
@@ -145,17 +159,12 @@ export class GenerateVideoFromScriptUseCase {
       );
     }
 
-    // 4. Update VideoRequest with HTML and set to PREVIEW_READY
+    // 4. Final Update (Status is already PREVIEW_READY, but ensure content is latest)
     videoRequest = videoRequest.updateHtmlContent(htmlContent);
-    videoRequest = videoRequest.updateStatus(VideoRequestStatus.PREVIEW_READY);
     await this.videoRequestRepo.update(videoRequest);
 
     console.log(
       `[GenerateVideoFromScriptUseCase] HTML generated and saved for ${requestId}. Ready for preview.`,
-    );
-
-    console.log(
-      `[GenerateVideoFromScriptUseCase] Phase 2 initiated for ${requestId}`,
     );
   }
 }

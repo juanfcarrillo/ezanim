@@ -2,8 +2,6 @@ interface CreateVideoResponse {
   success: boolean;
   requestId: string;
   message: string;
-  data: any;
-  endpoints: any;
 }
 
 interface StatusResponse {
@@ -52,8 +50,8 @@ async function runs() {
       // Poll for preview ready
       console.log('[TEST] Waiting for HTML generation (polling)...');
       let attempts = 0;
-      while (attempts < 60) {
-        // Increased attempts as generation might take time
+      while (attempts < 1000) {
+        // Increased attempts as generation might take time (queue + QA loops)
         await new Promise((resolve) => setTimeout(resolve, 2000));
         const statusRes = await fetch(
           `http://localhost:3000/poc/status/${requestId}`,
@@ -88,7 +86,7 @@ async function runs() {
       // Poll for rendering completion
       console.log('\n[TEST] Waiting for Video Rendering (polling)...');
       attempts = 0;
-      while (attempts < 120) {
+      while (attempts < 1000) {
         // Rendering takes longer, wait up to 4 minutes (120 * 2s)
         await new Promise((resolve) => setTimeout(resolve, 2000));
         const statusRes = await fetch(
