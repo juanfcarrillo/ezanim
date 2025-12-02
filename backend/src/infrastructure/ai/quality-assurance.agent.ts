@@ -12,27 +12,7 @@ export class QualityAssuranceAgent {
   private aiProvider: AIProvider | null = null;
 
   constructor() {
-    // Prefer Anthropic for QA tasks as requested
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (anthropicKey) {
-      this.aiProvider = AIProviderFactory.create({
-        provider: 'anthropic',
-        apiKey: anthropicKey,
-        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-      });
-    } else {
-      this.aiProvider = AIProviderFactory.createFromEnv();
-    }
-
-    if (this.aiProvider) {
-      console.log(
-        `[QualityAssuranceAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
-      );
-    } else {
-      console.warn(
-        '[QualityAssuranceAgent] No AI provider configured, using mock mode',
-      );
-    }
+    this.aiProvider = AIProviderFactory.createFromEnv();
   }
 
   async evaluateFix(

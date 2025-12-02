@@ -13,27 +13,7 @@ export class AnimationReviewAgent {
   private aiProvider: AIProvider | null = null;
 
   constructor() {
-    // Prefer Anthropic for Review tasks as requested
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (anthropicKey) {
-      this.aiProvider = AIProviderFactory.create({
-        provider: 'anthropic',
-        apiKey: anthropicKey,
-        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-      });
-    } else {
-      this.aiProvider = AIProviderFactory.createFromEnv();
-    }
-
-    if (this.aiProvider) {
-      console.log(
-        `[AnimationReviewAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
-      );
-    } else {
-      console.warn(
-        '[AnimationReviewAgent] No AI provider configured, using mock mode',
-      );
-    }
+    this.aiProvider = AIProviderFactory.createFromEnv();
   }
 
   async reviewHtml(htmlContent: string, userPrompt: string): Promise<ReviewResult> {
