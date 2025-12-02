@@ -22,7 +22,10 @@ export class RenderVideoUseCase {
       throw new Error(`VideoRequest ${videoRequestId} not found`);
     }
 
-    if (videoRequest.status !== VideoRequestStatus.PREVIEW_READY) {
+    if (
+      videoRequest.status !== VideoRequestStatus.PREVIEW_READY &&
+      videoRequest.status !== VideoRequestStatus.QA_COMPLETED
+    ) {
       throw new Error(
         `VideoRequest ${videoRequestId} is not ready for rendering`,
       );
