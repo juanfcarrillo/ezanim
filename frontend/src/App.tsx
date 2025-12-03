@@ -155,6 +155,65 @@ function App() {
     }
   };
 
+  const handleRender = async () => {
+    if (!videoData?.requestId) return;
+
+    setState('rendering');
+
+    try {
+      // Trigger render
+      const response = await fetch(`${BACKEND_URL}/poc/render/${videoData.requestId}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start rendering');
+      }
+
+      // Start polling for completion
+      pollForCompletion(videoData.requestId);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Rendering failed');
+      setState('preview'); // Go back to preview on error
+    }
+  };
+
+  const pollForCompletion = async (requestId: string) => {
+    const poll = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/poc/status/${requestId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const { status } = data.videoRequest;
+
+          if (status === 'COMPLETED') {
+             // Fetch video URL
+             const videoResponse = await fetch(`${BACKEND_URL}/poc/video/${requestId}`);
+             if (videoResponse.ok) {
+               const videoData = await videoResponse.json();
+               if (videoData.success && videoData.video && videoData.video.url) {
+                 setVideoData(prev => prev ? { ...prev, videoUrl: videoData.video.url } : null);
+                 setState('completed');
+                 return;
+               }
+             }
+             // If we can't get the video URL, keep polling or fail?
+             // Let's retry getting video URL in next poll
+          } else if (status === 'FAILED') {
+             setError('Rendering failed');
+             setState('preview');
+             return;
+          }
+        }
+        setTimeout(poll, 2000);
+      } catch {
+        setTimeout(poll, 2000);
+      }
+    };
+    poll();
+  };
+
   const handleRegenerate = () => {
     setVideoData(null);
     setState('idle');
@@ -173,7 +232,7 @@ function App() {
         <div className="left-panel">
           <VideoRequestForm 
             onSubmit={handleVideoRequest} 
-            isLoading={state === 'loading'} 
+            isLoading={state === 'loading' || state === 'rendering'} 
           />
           
           {state === 'preview' && (
@@ -197,9 +256,22 @@ function App() {
             <LoadingState message="Generating script, audio, and animation..." />
           )}
 
+          {state === 'rendering' && (
+            <LoadingState message="Rendering final video (this may take a minute)..." />
+          )}
+
           {state === 'preview' && videoData?.htmlContent && (
             <VideoPlayer 
               htmlContent={videoData.htmlContent}
+              aspectRatio={videoData.aspectRatio || '16:9'}
+              requestId={videoData.requestId}
+              onRender={handleRender}
+            />
+          )}
+
+          {state === 'completed' && videoData?.videoUrl && (
+            <VideoPlayer 
+              videoUrl={videoData.videoUrl}
               aspectRatio={videoData.aspectRatio || '16:9'}
             />
           )}
