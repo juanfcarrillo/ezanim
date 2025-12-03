@@ -25,7 +25,6 @@ const TEST_HTML = `<!DOCTYPE html>
         #box {
             width: 100px;
             height: 100px;
-            background: white;
             border-radius: 10px;
             display: flex;
             justify-content: center;

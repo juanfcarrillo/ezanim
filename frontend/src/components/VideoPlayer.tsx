@@ -7,6 +7,7 @@ interface VideoPlayerProps {
   requestId?: string;
   aspectRatio?: '16:9' | '9:16' | '1:1';
   onRegenerate?: () => void;
+  onRender?: (duration: number) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
@@ -14,13 +15,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoUrl,
   requestId,
   aspectRatio = '16:9',
-  onRegenerate 
+  onRegenerate,
+  onRender
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
@@ -44,7 +47,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return null;
   }, [requestId, htmlContent, BACKEND_URL]);
 
-  // Scale iframe to fit container
+  // Scale iframe to fit container using ResizeObserver
   useEffect(() => {
     const updateScale = () => {
       if (iframeRef.current && containerRef.current) {
@@ -54,35 +57,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
         
+        if (containerWidth === 0 || containerHeight === 0) return;
+
         // Calculate scale to fit
         const scaleX = containerWidth / originalWidth;
         const scaleY = containerHeight / originalHeight;
         const scale = Math.min(scaleX, scaleY);
         
-        // Apply transform
-        iframe.style.transform = `scale(${scale})`;
+        // Apply transform with center origin for perfect centering
+        iframe.style.transformOrigin = 'center center';
+        iframe.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        iframe.style.left = '50%';
+        iframe.style.top = '50%';
         
-        // Center if needed
-        const scaledWidth = originalWidth * scale;
-        const scaledHeight = originalHeight * scale;
-        const offsetX = (containerWidth - scaledWidth) / 2;
-        const offsetY = (containerHeight - scaledHeight) / 2;
-        
-        iframe.style.left = `${offsetX}px`;
-        iframe.style.top = `${offsetY}px`;
+        // Force visibility
+        iframe.style.opacity = '1';
       }
     };
 
-    // Update scale on mount and resize
+    // Initial update
     updateScale();
-    window.addEventListener('resize', updateScale);
-    
-    // Small delay to ensure iframe is loaded
-    const timer = setTimeout(updateScale, 100);
+
+    // Use ResizeObserver for robust size tracking
+    const resizeObserver = new ResizeObserver(() => {
+      updateScale();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
 
     return () => {
-      window.removeEventListener('resize', updateScale);
-      clearTimeout(timer);
+      resizeObserver.disconnect();
     };
   }, [htmlContent, originalWidth, originalHeight]);
 
@@ -114,6 +120,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       modifiedHtml = modifiedHtml.replace('</head>', `${styleInjection}</head>`);
     } else if (modifiedHtml.includes('<body')) {
       modifiedHtml = modifiedHtml.replace('<body', `${styleInjection}<body`);
+    } else {
+      // Fallback if no head/body tags found
+      modifiedHtml = `${styleInjection}${modifiedHtml}`;
     }
 
     // Inject a script that listens for postMessage and controls the timeline
@@ -143,7 +152,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     `;
 
     // Insert before closing </body> tag
-    modifiedHtml = modifiedHtml.replace('</body>', `${controlScript}</body>`);
+    if (modifiedHtml.includes('</body>')) {
+      modifiedHtml = modifiedHtml.replace('</body>', `${controlScript}</body>`);
+    } else {
+      modifiedHtml += controlScript;
+    }
 
     return modifiedHtml;
   }, [htmlContent, originalWidth, originalHeight]);
@@ -194,16 +207,51 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const togglePlayVideo = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
     }
   };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
+
+  // Determine container styles based on aspect ratio
+  const containerStyle = useMemo(() => {
+    const ratio = aspectRatio.replace(':', '/');
+    
+    if (aspectRatio === '9:16') {
+      return {
+        aspectRatio: ratio,
+        height: '70vh', // Constrain height for vertical videos
+        width: 'auto',
+        maxWidth: '100%'
+      };
+    }
+    
+    if (aspectRatio === '1:1') {
+      return {
+        aspectRatio: ratio,
+        height: '70vh',
+        width: 'auto',
+        maxWidth: '100%'
+      };
+    }
+
+    // Default 16:9
+    return {
+      aspectRatio: ratio,
+      width: '100%',
+      height: 'auto'
+    };
+  }, [aspectRatio]);
 
   // If we have HTML content (preview mode)
   if (htmlContent) {
@@ -214,44 +262,69 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <p>HTML Animation with Anime.js</p>
         </div>
         
-        <div 
-          className="video-player-container" 
-          ref={containerRef}
-          style={{ aspectRatio: aspectRatio.replace(':', '/') }}
-        >
-          <iframe
-            ref={iframeRef}
-            srcDoc={enhancedHtmlContent}
-            className="video-iframe"
-            title="Video Preview"
-            sandbox="allow-scripts allow-same-origin"
-          />
-          
-          {/* Hidden audio element synced with animation */}
-          {audioUrl && (
-            <audio
-              ref={audioRef}
-              src={audioUrl}
-              preload="auto"
-              style={{ display: 'none' }}
+        <div className="player-center-stage">
+          <div 
+            className="video-player-container" 
+            ref={containerRef}
+            style={containerStyle}
+          >
+            <iframe
+              ref={iframeRef}
+              srcDoc={enhancedHtmlContent}
+              className="video-iframe"
+              title="Video Preview"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              style={{
+                width: `${originalWidth}px`,
+                height: `${originalHeight}px`,
+                transformOrigin: 'center center',
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)', // Initial transform before JS takes over
+                opacity: 0, // Start hidden, show after scale
+                transition: 'opacity 0.2s ease'
+              }}
             />
-          )}
-          
-          <div className="controls-overlay">
-            <div className="controls-row">
-              <button className="control-btn" onClick={togglePlayHtml}>
-                {isPlaying ? '⏸ Pause' : '▶ Play'}
-              </button>
-              
-              <button className="control-btn secondary" onClick={restartHtml}>
-                🔄 Restart
-              </button>
-              
-              {onRegenerate && (
-                <button className="control-btn secondary" onClick={onRegenerate}>
-                  ♻️ Regenerate
+            
+            {/* Hidden audio element synced with animation */}
+            {audioUrl && (
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                preload="auto"
+                style={{ display: 'none' }}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={handleAudioEnded}
+              />
+            )}
+            
+            <div className="controls-overlay">
+              <div className="controls-row">
+                <button className="control-btn" onClick={togglePlayHtml}>
+                  {isPlaying ? '⏸ Pause' : '▶ Play'}
                 </button>
-              )}
+                
+                <button className="control-btn secondary" onClick={restartHtml}>
+                  🔄 Restart
+                </button>
+                
+                {onRegenerate && (
+                  <button className="control-btn secondary" onClick={onRegenerate}>
+                    ♻️ Regenerate
+                  </button>
+                )}
+
+                {onRender && (
+                  <button className="control-btn primary" onClick={() => onRender(duration)}>
+                    🚀 Render Video
+                  </button>
+                )}
+              </div>
+              <div className="time-display">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </div>
             </div>
           </div>
         </div>
@@ -277,17 +350,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <p>Rendered with audio</p>
         </div>
         
-        <div 
-          className="video-player-container"
-          style={{ aspectRatio: aspectRatio.replace(':', '/') }}
-        >
-          <video
-            ref={videoRef}
-            className="video-element"
-            src={videoUrl}
-            onClick={togglePlayVideo}
-            controls
-          />
+        <div className="player-center-stage">
+          <div 
+            className="video-player-container"
+            style={containerStyle}
+          >
+            <video
+              className="video-element"
+              src={videoUrl}
+              controls
+            />
+          </div>
         </div>
 
         <div className="player-footer">
@@ -310,3 +383,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     </div>
   );
 };
+
+function formatTime(seconds: number) {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
