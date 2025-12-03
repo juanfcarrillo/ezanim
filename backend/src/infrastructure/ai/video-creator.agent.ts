@@ -22,6 +22,7 @@ export class VideoCreatorAgent {
 
   async createVideo(
     userPrompt: string,
+    duration: number = 15,
     vtt?: string,
     aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
   ): Promise<string> {
@@ -37,6 +38,11 @@ export class VideoCreatorAgent {
       const timingContext = vtt
         ? `\nContext - Timing (VTT):\nUse these timestamps to synchronize the animation events exactly with the voiceover. The VTT file contains the start and end times for each spoken segment. You MUST use these times to schedule your animations using the 'offset' parameter in anime.timeline().add().\n\nVTT Content:\n"${vtt}"\n`
         : '';
+
+      const scalingInstruction =
+        aspectRatio === '9:16'
+          ? '\n- CRITICAL FOR 9:16: Since this is a vertical video, all elements (text, icons, SVGs) must be SCALED UP significantly (2x-3x larger than desktop) to be legible on mobile screens. Use large font sizes (e.g., 3rem+ for headings) and fill the width of the screen.'
+          : '';
 
       const systemPrompt = `Act as an expert frontend web developer and creative animator.
 
@@ -54,7 +60,7 @@ Libraries:
 
 Visual Structure (Full Screen Cinematic):
 - The animation must occupy the entire viewport (100vw, 100vh).
-- The layout must be optimized for a **${aspectRatio}** aspect ratio.
+- The layout must be optimized for a **${aspectRatio}** aspect ratio.${scalingInstruction}
 - No visible video player controls (play button, progress bar, etc.) should be rendered.
 - CRITICAL: Do NOT include any "Click to Start", "Play", or "Start Learning" overlays, buttons, or splash screens. The video should be purely the animation content visible from the start.
 - Stage: The entire body is the stage. Use absolute positioning for elements relative to the viewport.
