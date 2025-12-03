@@ -22,11 +22,12 @@ export class VideoCreatorAgent {
 
   async createVideo(
     userPrompt: string,
-    duration: number = 15,
     vtt?: string,
     aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
   ): Promise<string> {
-    console.log(`[VideoCreatorAgent] Creating video for prompt: "${userPrompt}" with aspect ratio: ${aspectRatio}`);
+    console.log(
+      `[VideoCreatorAgent] Creating video for prompt: "${userPrompt}" with aspect ratio: ${aspectRatio}`,
+    );
 
     if (!this.aiProvider) {
       throw new Error('No AI provider configured');
@@ -134,58 +135,5 @@ Return ONLY the corrected HTML code.`;
       console.error('[VideoCreatorAgent] Error refining video:', error);
       throw error;
     }
-  }
-
-  private getMockHtml(
-    topic: string,
-    aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
-  ): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${topic}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --bg-dark: #1e272e;
-            --primary: #0984e3;
-            --text: #dfe6e9;
-        }
-        body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; background: var(--bg-dark); font-family: sans-serif; color: var(--text); display: flex; justify-content: center; align-items: center; }
-        .element { font-size: 4rem; position: absolute; opacity: 0; }
-        .info { position: absolute; bottom: 20px; right: 20px; font-size: 1rem; opacity: 0.5; }
-    </style>
-</head>
-<body>
-    <div class="element el-1">MOCK MODE</div>
-    <div class="element el-2" style="top: 60%">${topic}</div>
-    <div class="info">Aspect Ratio: ${aspectRatio}</div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
-    <script>
-        window.tl = anime.timeline({
-            easing: 'easeOutExpo',
-            duration: 10000,
-            autoplay: false
-        });
-
-        window.tl.add({
-            targets: '.el-1',
-            translateY: [-100, 0],
-            opacity: [0, 1],
-            duration: 1000,
-            easing: 'easeOutBounce'
-        })
-        .add({
-            targets: '.el-2',
-            scale: [0, 1],
-            opacity: [0, 1],
-            duration: 800
-        });
-    </script>
-</body>
-</html>`;
   }
 }

@@ -23,9 +23,7 @@ export class AnimationConfigurationAgent {
         `[AnimationConfigurationAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
       );
     } else {
-      console.warn(
-        '[AnimationConfigurationAgent] No AI provider configured, using mock mode',
-      );
+      console.warn('[AnimationConfigurationAgent] No AI provider configured');
     }
   }
 
@@ -38,9 +36,9 @@ export class AnimationConfigurationAgent {
       'elements',
     );
 
-    // If no AI provider, use mock animations
+    // If no AI provider, throw error
     if (!this.aiProvider) {
-      return this.getMockAnimations(elements);
+      throw new Error('AI provider not configured');
     }
 
     try {
@@ -107,10 +105,7 @@ Respond ONLY with valid JSON:
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.warn(
-          '[AnimationConfigurationAgent] Failed to parse AI response, using mock',
-        );
-        return this.getMockAnimations(elements);
+        throw new Error('Failed to parse AI response');
       }
 
       const parsed = JSON.parse(jsonMatch[0]) as {
@@ -154,133 +149,7 @@ Respond ONLY with valid JSON:
       };
     } catch (error) {
       console.error('[AnimationConfigurationAgent] AI API error:', error);
-      return this.getMockAnimations(elements);
+      throw error;
     }
-  }
-
-  private getMockAnimations(elements: AnimationElement[]): AnimationResult {
-    // Calculate delays sequentially to avoid overlaps
-    let cumulativeTime = 0;
-    const pauseBetweenAnimations = 500; // ms between each animation
-
-    const animatedElements = elements.map((element, index) => {
-      let animationConfig: AnimationConfig;
-      let duration: number;
-
-      switch (element.order) {
-        case 0: // Main Title - Dramatic entrance
-          duration = 1200;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'easeOutExpo',
-            properties: {
-              opacity: [0, 1],
-              translateY: [-80, 0],
-              scale: [0.8, 1],
-            },
-            delay: cumulativeTime,
-          };
-          break;
-
-        case 1: // Subtitle 1 - Problem statement
-          duration = 800;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'easeOutQuad',
-            properties: {
-              opacity: [0, 1],
-              translateY: [30, 0],
-            },
-            delay: cumulativeTime,
-          };
-          break;
-
-        case 2: // Icon/Shape 1 - Left element falls in
-          duration = 1500;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'easeOutBounce',
-            properties: {
-              opacity: [0, 1],
-              translateY: [-400, 0],
-              rotate: ['-45deg', '0deg'],
-            },
-            delay: cumulativeTime,
-          };
-          break;
-
-        case 3: // Shape/Icon 2 - Right element falls in
-          duration = 1500;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'easeOutBounce',
-            properties: {
-              opacity: [0, 1],
-              translateY: [-400, 0],
-              rotate: ['45deg', '0deg'],
-            },
-            delay: cumulativeTime,
-          };
-          break;
-
-        case 4: // Success icon - Dramatic reveal
-          duration = 1000;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'spring(1, 80, 10, 0)',
-            properties: {
-              opacity: [0, 1],
-              scale: [0, 1.2, 1],
-            },
-            delay: cumulativeTime,
-          };
-          break;
-
-        case 5: // Subtitle 2 - Solution statement
-          duration = 800;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'easeOutQuad',
-            properties: {
-              opacity: [0, 1],
-              translateY: [30, 0],
-            },
-            delay: cumulativeTime,
-          };
-          break;
-
-        default:
-          duration = 1000;
-          animationConfig = {
-            targets: `.element-${index}`,
-            duration,
-            easing: 'easeOutExpo',
-            properties: {
-              opacity: [0, 1],
-              translateY: [-50, 0],
-            },
-            delay: cumulativeTime,
-          };
-      }
-
-      // Update cumulative time for next animation
-      cumulativeTime += duration + pauseBetweenAnimations;
-
-      return element.addAnimation(animationConfig);
-    });
-
-    // Calculate total duration based on last animation
-    const totalDuration = Math.ceil((cumulativeTime + 1000) / 1000); // Add 1s buffer and convert to seconds
-
-    return {
-      elements: animatedElements,
-      totalDuration,
-    };
   }
 }
