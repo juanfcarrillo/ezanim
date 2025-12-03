@@ -21,7 +21,7 @@ interface RenderResponse {
 
 async function runs() {
   const prompt =
-    '¿Es el "Clean Code" una estafa? ¿Escribir código "limpio" hace que el software sea lento? (Referencia a la polémica de Casey Muratori)';
+    'Monolito vs. Microservicios: La eterna discusión sobre si construir una aplicación como un solo bloque gigante o como pequeños servicios conectados.';
   const aspectRatio = '9:16';
 
   console.log(`Sending full video creation request (${aspectRatio})...`);

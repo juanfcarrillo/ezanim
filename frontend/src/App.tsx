@@ -126,7 +126,7 @@ function App() {
   };
 
   const handleRefine = async (critique: string) => {
-    if (!videoData?.htmlContent) return;
+    if (!videoData?.requestId) return;
     
     setIsRefining(true);
     try {
@@ -136,7 +136,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          htmlContent: videoData.htmlContent,
+          requestId: videoData.requestId,
           critique,
         }),
       });

@@ -5,6 +5,8 @@ import {
   Body,
   Param,
   ValidationPipe,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -33,11 +35,24 @@ export class VideoRequestController {
   ) {}
 
   @Post('refine')
-  async refine(@Body() body: { htmlContent: string; critique: string }) {
+  async refine(@Body() body: { requestId: string; critique: string }) {
+    const videoRequest = await this.videoRequestRepo.findById(body.requestId);
+    if (!videoRequest) {
+      throw new NotFoundException('Video request not found');
+    }
+
+    if (!videoRequest.htmlContent) {
+      throw new BadRequestException('No HTML content to refine');
+    }
+
     const refinedHtml = await this.refineAnimationHtmlUseCase.execute(
-      body.htmlContent,
+      videoRequest.htmlContent,
       body.critique,
     );
+
+    const updatedRequest = videoRequest.updateHtmlContent(refinedHtml);
+    await this.videoRequestRepo.save(updatedRequest);
+
     return { htmlContent: refinedHtml };
   }
 
