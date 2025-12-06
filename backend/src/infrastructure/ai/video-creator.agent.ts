@@ -125,15 +125,21 @@ Your Task:
 Current HTML Code:
 ${currentHtml.substring(0, 50000)}
 
-Return ONLY the corrected HTML code.`;
+Return ONLY the corrected HTML code. Do not include any conversational text or explanations.`;
 
       const response = await this.aiProvider.generateContent(systemPrompt);
 
       let html = response.trim();
-      if (html.startsWith('```html')) {
-        html = html.replace(/^```html/, '').replace(/```$/, '');
-      } else if (html.startsWith('```')) {
-        html = html.replace(/^```/, '').replace(/```$/, '');
+
+      // Extract HTML from code block if present, handling text before/after
+      const codeBlockMatch = html.match(/```html([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        html = codeBlockMatch[1];
+      } else {
+        const genericMatch = html.match(/```([\s\S]*?)```/);
+        if (genericMatch) {
+          html = genericMatch[1];
+        }
       }
 
       return html.trim();

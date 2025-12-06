@@ -83,7 +83,7 @@
 }
 
 .control-btn {
-  background: var(--primary-color);
+  background: var(--accent-primary);
   color: white;
   border: none;
   padding: 0.6rem 1.2rem;

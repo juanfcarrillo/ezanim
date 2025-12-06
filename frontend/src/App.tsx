@@ -5,7 +5,7 @@ import { VideoRequestForm } from './components/VideoRequestForm'
 import { LoadingState } from './components/LoadingState'
 import { RevisionChat } from './components/RevisionChat'
 
-type AppState = 'idle' | 'loading' | 'preview' | 'rendering' | 'completed';
+type AppState = 'idle' | 'loading' | 'preview' | 'qa_completed' | 'rendering' | 'completed';
 
 interface VideoData {
   requestId: string;
@@ -88,7 +88,12 @@ function App() {
                 aspectRatio,
               });
 
-              setState('preview');
+              const status = videoRequest.status;
+              if (status === 'QA_COMPLETED') {
+                setState('qa_completed');
+              } else {
+                setState('preview');
+              }
             }
           }
           
@@ -235,7 +240,7 @@ function App() {
             isLoading={state === 'loading' || state === 'rendering'} 
           />
           
-          {state === 'preview' && (
+          {(state === 'preview' || state === 'qa_completed') && (
             <div className="chat-container">
               <RevisionChat onRefine={handleRefine} isRefining={isRefining} />
             </div>
@@ -260,7 +265,7 @@ function App() {
             <LoadingState message="Rendering final video (this may take a minute)..." />
           )}
 
-          {state === 'preview' && videoData?.htmlContent && (
+          {(state === 'preview' || state === 'qa_completed') && videoData?.htmlContent && (
             <VideoPlayer 
               htmlContent={videoData.htmlContent}
               aspectRatio={videoData.aspectRatio || '16:9'}

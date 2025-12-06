@@ -65,10 +65,6 @@ export const VideoRequestForm: React.FC<VideoRequestFormProps> = ({ onSubmit, is
           {isLoading ? 'Creating...' : '🚀 Generate Video'}
         </button>
       </form>
-
-      <div className="form-footer">
-        <p>⚡ Powered by AI • 🎙️ ElevenLabs Voice • ✨ Anime.js Animations</p>
-      </div>
     </div>
   );
 };
