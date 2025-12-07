@@ -13,7 +13,17 @@ export class OpenAIProvider implements AIProvider {
     console.log(`[OpenAIProvider] Initialized with model: ${this.modelName}`);
   }
 
-  async generateContent(prompt: string): Promise<string> {
+  async generateContent(
+    prompt: string,
+    imagePaths?: string[],
+  ): Promise<string> {
+    // TODO: Implement image support for OpenAI
+    if (imagePaths && imagePaths.length > 0) {
+      console.warn(
+        '[OpenAIProvider] Image inputs are not yet supported for OpenAI provider.',
+      );
+    }
+
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {

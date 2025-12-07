@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { AIProvider } from './providers/ai-provider.interface';
 import { AIProviderFactory } from './providers/ai-provider.factory';
 
+export interface VideoCreationResult {
+  html: string;
+  criticalTimestamps: number[];
+}
+
 @Injectable()
 export class VideoCreatorAgent {
   private aiProvider: AIProvider | null = null;
@@ -25,7 +30,7 @@ export class VideoCreatorAgent {
     duration: number = 15,
     vtt?: string,
     aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
-  ): Promise<string> {
+  ): Promise<VideoCreationResult> {
     console.log(
       `[VideoCreatorAgent] Creating video for prompt: "${userPrompt}" with aspect ratio: ${aspectRatio}`,
     );
@@ -83,6 +88,13 @@ Animation Script (The Scenes):
 Code Logic:
 - Expose the timeline globally as 'window.tl' so it can be controlled externally.
 - IMPORTANT: Do NOT auto-play the timeline. It should wait for user interaction or external control.
+- CRITICAL: You MUST include a comment in the <head> section with a list of critical timestamps (in milliseconds) for the animation.
+  Format: <!-- CRITICAL_TIMESTAMPS: [0, 1500, 3000, 5000] -->
+  These timestamps should correspond to:
+  1. The start (0ms).
+  2. Key scene transitions.
+  3. Major element entrances/exits.
+  4. The final state.
 
 The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML code, no markdown code blocks.`;
 
@@ -96,14 +108,33 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
         html = html.replace(/^```/, '').replace(/```$/, '');
       }
 
-      return html.trim();
+      // Parse timestamps
+      const timestampMatch = html.match(
+        /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
+      );
+      let criticalTimestamps: number[] = [0, duration * 1000]; // Default fallback
+      if (timestampMatch) {
+        try {
+          criticalTimestamps = JSON.parse(timestampMatch[1]);
+        } catch (e) {
+          console.warn(
+            '[VideoCreatorAgent] Failed to parse critical timestamps:',
+            e,
+          );
+        }
+      }
+
+      return { html: html.trim(), criticalTimestamps };
     } catch (error) {
       console.error('[VideoCreatorAgent] AI API error:', error);
       throw error;
     }
   }
 
-  async refineVideo(currentHtml: string, critique: string): Promise<string> {
+  async refineVideo(
+    currentHtml: string,
+    critique: string,
+  ): Promise<VideoCreationResult> {
     console.log('[VideoCreatorAgent] Refining video based on critique...');
 
     if (!this.aiProvider) {
@@ -121,6 +152,7 @@ Your Task:
 - Fix the issues mentioned in the critique.
 - Keep the rest of the code intact if it works well.
 - Ensure the final output is still a single, valid HTML file with Anime.js.
+- Ensure the <!-- CRITICAL_TIMESTAMPS: [...] --> comment is preserved or updated if the timing changes.
 
 Current HTML Code:
 ${currentHtml.substring(0, 50000)}
@@ -142,7 +174,33 @@ Return ONLY the corrected HTML code. Do not include any conversational text or e
         }
       }
 
-      return html.trim();
+      // Parse timestamps
+      const timestampMatch = html.match(
+        /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
+      );
+      let criticalTimestamps: number[] = [];
+      if (timestampMatch) {
+        try {
+          criticalTimestamps = JSON.parse(timestampMatch[1]);
+        } catch (e) {
+          console.warn(
+            '[VideoCreatorAgent] Failed to parse critical timestamps:',
+            e,
+          );
+        }
+      } else {
+        // Try to find them in the previous HTML if not present in new one (though LLM should include it)
+        const oldMatch = currentHtml.match(
+          /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
+        );
+        if (oldMatch) {
+          try {
+            criticalTimestamps = JSON.parse(oldMatch[1]);
+          } catch (e) {}
+        }
+      }
+
+      return { html: html.trim(), criticalTimestamps };
     } catch (error) {
       console.error('[VideoCreatorAgent] Error refining video:', error);
       throw error;

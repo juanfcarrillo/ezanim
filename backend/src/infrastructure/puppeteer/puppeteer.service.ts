@@ -38,6 +38,84 @@ export class PuppeteerService {
     return this.browser;
   }
 
+  async captureScreenshots(
+    html: string,
+    timestamps: number[],
+    width: number,
+    height: number,
+  ): Promise<string[]> {
+    console.log(
+      `[PuppeteerService] Capturing ${timestamps.length} critical frames`,
+    );
+
+    let browser = await this.ensureBrowser();
+    let page;
+
+    try {
+      page = await browser.newPage();
+    } catch (error) {
+      console.error(
+        '[PuppeteerService] Error creating new page, restarting browser:',
+        error,
+      );
+      try {
+        await browser.close();
+      } catch (e) {}
+      this.browser = null;
+      browser = await this.ensureBrowser();
+      page = await browser.newPage();
+    }
+
+    try {
+      await page.setViewport({
+        width,
+        height,
+        deviceScaleFactor: 2,
+      });
+
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+
+      await page.evaluate(() => {
+        window['puppeteerMode'] = true;
+      });
+
+      await page.waitForFunction(() => typeof window['anime'] !== 'undefined');
+      await page.waitForFunction(() => typeof window['tl'] !== 'undefined');
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const tempDir = path.join(
+        process.env.VIDEO_OUTPUT_DIR || '/tmp/ezanim',
+        `critical-frames-${Date.now()}`,
+      );
+      await fs.mkdir(tempDir, { recursive: true });
+
+      const screenshotPaths: string[] = [];
+
+      for (let i = 0; i < timestamps.length; i++) {
+        const time = timestamps[i];
+
+        await page.evaluate((t) => {
+          const tl = window['tl'];
+          if (tl) {
+            tl.seek(t);
+          }
+        }, time);
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const filePath = path.join(tempDir, `critical-${i}-${time}.png`);
+        await page.screenshot({ path: filePath, type: 'png' });
+        screenshotPaths.push(filePath);
+      }
+
+      return screenshotPaths;
+    } finally {
+      if (page) {
+        await page.close().catch((e) => console.error('Error closing page:', e));
+      }
+    }
+  }
+
   async renderFrames(options: BrowserRenderOptions): Promise<string[]> {
     console.log('[PuppeteerService] Starting frame capture');
     const { html, width, height, fps, duration } = options;

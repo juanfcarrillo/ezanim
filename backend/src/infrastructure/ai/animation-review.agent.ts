@@ -16,16 +16,27 @@ export class AnimationReviewAgent {
     this.aiProvider = AIProviderFactory.createFromEnv();
   }
 
-  async reviewHtml(htmlContent: string, userPrompt: string): Promise<ReviewResult> {
+  async reviewHtml(
+    htmlContent: string,
+    userPrompt: string,
+    screenshots?: string[],
+  ): Promise<ReviewResult> {
     console.log('[AnimationReviewAgent] Reviewing HTML quality...');
 
     if (!this.aiProvider) {
-      return { hasIssues: false, critique: 'Mock review: Looks good.', score: 100 };
+      return {
+        hasIssues: false,
+        critique: 'Mock review: Looks good.',
+        score: 100,
+      };
     }
 
     try {
       const systemPrompt = `You are "The Critic", an expert UI/UX designer and Animation QA specialist.
 Your job is to strictly review the provided HTML/CSS/JS (Anime.js) code for a video animation about: "${userPrompt}".
+
+I have attached screenshots of critical frames (entry, exit, scene changes, etc.).
+Use these screenshots to visually verify the layout, colors, and element positioning.
 
 Check for the following Quality Criteria:
 1. **Visual Layout**: Are elements centered? Do they have proper spacing? Are colors consistent (Dark Mode)?
@@ -34,7 +45,7 @@ Check for the following Quality Criteria:
 4. **Animation Quality**: Are animations smooth (easing)? Is the timing logical? Do they use 'anime.stagger' for lists?
 5. **Code Integrity**: Is the HTML structure valid? Is 'window.tl' exposed?
 
-Analyze the code provided below.
+Analyze the code and the screenshots provided below.
 
 Response Format (JSON only):
 {
@@ -45,10 +56,12 @@ Response Format (JSON only):
 
 HTML Code to Review:
 ${htmlContent.substring(0, 50000)} 
-`; 
-// Truncating to avoid token limits if huge, though usually it fits.
+`;
 
-      const response = await this.aiProvider.generateContent(systemPrompt);
+      const response = await this.aiProvider.generateContent(
+        systemPrompt,
+        screenshots,
+      );
       
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

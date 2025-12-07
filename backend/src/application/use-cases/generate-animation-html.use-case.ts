@@ -26,7 +26,8 @@ export class GenerateAnimationHtmlUseCase {
       videoRequest.id,
     );
 
-    const htmlContent = await this.videoCreatorAgent.createVideo(userPrompt);
+    const { html: htmlContent } =
+      await this.videoCreatorAgent.createVideo(userPrompt);
     const duration = 15; // Default duration
 
     let updatedRequest = videoRequest.updateRefinedPrompt(userPrompt);

@@ -18,6 +18,7 @@ export class QualityAssuranceAgent {
   async evaluateFix(
     originalCritique: string,
     newHtmlContent: string,
+    screenshots?: string[],
   ): Promise<JudgeDecision> {
     console.log('[QualityAssuranceAgent] Judging the fix...');
 
@@ -31,6 +32,7 @@ The "Critic" previously found these issues in the animation code:
 "${originalCritique}"
 
 The Developer has attempted to fix these issues. Here is the updated HTML code.
+I have also attached screenshots of the refined animation.
 
 Your Task:
 Determine if the code is now acceptable or if it needs another round of review by the Critic.
@@ -47,7 +49,10 @@ Updated HTML Code:
 ${newHtmlContent.substring(0, 50000)}
 `;
 
-      const response = await this.aiProvider.generateContent(systemPrompt);
+      const response = await this.aiProvider.generateContent(
+        systemPrompt,
+        screenshots,
+      );
       
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

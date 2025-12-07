@@ -13,7 +13,17 @@ export class AnthropicProvider implements AIProvider {
     console.log(`[AnthropicProvider] Initialized with model: ${this.modelName}`);
   }
 
-  async generateContent(prompt: string): Promise<string> {
+  async generateContent(
+    prompt: string,
+    imagePaths?: string[],
+  ): Promise<string> {
+    // TODO: Implement image support for Anthropic
+    if (imagePaths && imagePaths.length > 0) {
+      console.warn(
+        '[AnthropicProvider] Image inputs are not yet supported for Anthropic provider.',
+      );
+    }
+
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {

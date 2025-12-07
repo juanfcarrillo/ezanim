@@ -5,7 +5,7 @@ export interface AIProviderConfig {
 }
 
 export interface AIProvider {
-  generateContent(prompt: string): Promise<string>;
+  generateContent(prompt: string, imagePaths?: string[]): Promise<string>;
   getProviderName(): string;
   getModelName(): string;
 }

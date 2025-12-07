@@ -6,6 +6,10 @@ export class RefineAnimationHtmlUseCase {
   constructor(private readonly videoCreatorAgent: VideoCreatorAgent) {}
 
   async execute(currentHtml: string, critique: string): Promise<string> {
-    return await this.videoCreatorAgent.refineVideo(currentHtml, critique);
+    const result = await this.videoCreatorAgent.refineVideo(
+      currentHtml,
+      critique,
+    );
+    return result.html;
   }
 }

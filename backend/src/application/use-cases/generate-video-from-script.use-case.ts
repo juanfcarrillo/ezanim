@@ -5,6 +5,7 @@ import {
   QualityAssuranceAgent,
   JudgeDecision,
 } from '../../infrastructure/ai/quality-assurance.agent';
+import { PuppeteerService } from '../../infrastructure/puppeteer/puppeteer.service';
 import { RenderVideoUseCase } from './render-video.use-case';
 import { InMemoryVideoRequestRepository } from '../../infrastructure/repositories/in-memory-video-request.repository';
 import {
@@ -30,6 +31,7 @@ export class GenerateVideoFromScriptUseCase {
     private qualityAssuranceAgent: QualityAssuranceAgent,
     private renderVideoUseCase: RenderVideoUseCase,
     private videoRequestRepo: InMemoryVideoRequestRepository,
+    private puppeteerService: PuppeteerService,
   ) {}
 
   async execute(input: GenerateVideoFromScriptInput): Promise<void> {
@@ -76,12 +78,13 @@ export class GenerateVideoFromScriptUseCase {
     console.log(
       '[GenerateVideoFromScriptUseCase] Generating video HTML with VideoCreatorAgent...',
     );
-    let htmlContent = await this.videoCreatorAgent.createVideo(
-      initialRequest,
-      duration,
-      vtt,
-      aspectRatio,
-    );
+    let { html: htmlContent, criticalTimestamps } =
+      await this.videoCreatorAgent.createVideo(
+        initialRequest,
+        duration,
+        vtt,
+        aspectRatio,
+      );
 
     // Save initial draft immediately for preview
     videoRequest = videoRequest.updateHtmlContent(htmlContent);
@@ -89,6 +92,25 @@ export class GenerateVideoFromScriptUseCase {
     await this.videoRequestRepo.update(videoRequest);
     console.log(
       `[GenerateVideoFromScriptUseCase] Initial HTML draft saved for ${requestId}`,
+    );
+
+    // Determine dimensions for screenshots
+    let width = 1920;
+    let height = 1080;
+    if (aspectRatio === '9:16') {
+      width = 1080;
+      height = 1920;
+    } else if (aspectRatio === '1:1') {
+      width = 1080;
+      height = 1080;
+    }
+
+    // Capture critical frames
+    let screenshots = await this.puppeteerService.captureScreenshots(
+      htmlContent,
+      criticalTimestamps,
+      width,
+      height,
     );
 
     // 3. Quality Assurance Loop
@@ -106,6 +128,7 @@ export class GenerateVideoFromScriptUseCase {
       const review = await this.animationReviewAgent.reviewHtml(
         htmlContent,
         initialRequest,
+        screenshots,
       );
 
       if (!review.hasIssues) {
@@ -124,23 +147,35 @@ export class GenerateVideoFromScriptUseCase {
       console.log(
         '[GenerateVideoFromScriptUseCase] Refining video based on critique...',
       );
-      const refinedHtml = await this.videoCreatorAgent.refineVideo(
+      const refinedResult = await this.videoCreatorAgent.refineVideo(
         htmlContent,
         review.critique,
       );
+      htmlContent = refinedResult.html;
+      criticalTimestamps = refinedResult.criticalTimestamps;
 
       // Save refined version immediately
-      htmlContent = refinedHtml;
       videoRequest = videoRequest.updateHtmlContent(htmlContent);
       await this.videoRequestRepo.update(videoRequest);
       console.log(
         `[GenerateVideoFromScriptUseCase] Refined HTML saved for ${requestId} (Loop ${loopCount})`,
       );
 
+      // Capture new critical frames
+      // Clean up old screenshots
+      await this.puppeteerService.cleanup(screenshots);
+      screenshots = await this.puppeteerService.captureScreenshots(
+        htmlContent,
+        criticalTimestamps,
+        width,
+        height,
+      );
+
       // c. Judge Decision
       const decision = await this.qualityAssuranceAgent.evaluateFix(
         review.critique,
-        refinedHtml,
+        htmlContent,
+        screenshots,
       );
 
       if (decision === JudgeDecision.APPROVE) {
@@ -153,6 +188,9 @@ export class GenerateVideoFromScriptUseCase {
         // Continue loop
       }
     }
+
+    // Clean up final screenshots
+    await this.puppeteerService.cleanup(screenshots);
 
     if (!approved) {
       console.warn(
