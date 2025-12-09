@@ -114,7 +114,10 @@ export class GenerateVideoFromScriptUseCase {
     );
 
     // 3. Quality Assurance Loop
-    const MAX_LOOPS = 2;
+    // Default to 0 to save API calls. Set QA_MAX_LOOPS env var to enable (e.g. 1 or 2).
+    const MAX_LOOPS = process.env.QA_MAX_LOOPS
+      ? parseInt(process.env.QA_MAX_LOOPS)
+      : 0;
     let loopCount = 0;
     let approved = false;
 
