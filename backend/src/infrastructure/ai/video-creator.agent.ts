@@ -72,8 +72,17 @@ Visual Structure (Full Screen Cinematic):
 - Subtitles: A clean, cinematic subtitle overlay at the bottom center, with a semi-transparent background for readability. Use 'Roboto' font.
 - Typography: Use 'Poppins' for headings and 'Roboto' for body text.
 
-Animation Style:
+Animation Style & Visual Hooks (CRITICAL):
 
+The first 3-5 seconds are the most important. You MUST include a "Visual Hook" at the very beginning (0ms - 3000ms) to captivate the viewer.
+Implement one or more of these specific hook techniques:
+- Explosive Transitions: Elements bursting into the scene or defying gravity.
+- Kinetic Typography: Text that animates dynamically (whooshes, explosions) to emphasize the topic.
+- Morphing Reveals: Mundane objects morphing into fantastical ones.
+- Scale Shocks: Dramatic zooms from micro to macro views.
+- Loop Teases: Hypnotic 1-2 second loops before the main narrative.
+
+General Animation Guidelines:
 - Use anime.timeline() to sequence the entire story.
 - Easing: Use 'easeOutExpo' for snappy entrances and 'easeInOutQuad' for smooth transitions. Avoid excessive bouncing unless playful.
 - Dynamic Entrances: Elements should slide in, scale up, or morph.
