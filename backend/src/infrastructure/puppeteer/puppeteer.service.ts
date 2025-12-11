@@ -70,7 +70,7 @@ export class PuppeteerService {
       await page.setViewport({
         width,
         height,
-        deviceScaleFactor: 2,
+        deviceScaleFactor: 1, // Reduced for faster screenshot capture
       });
 
       await page.setContent(html, { waitUntil: 'networkidle0' });
@@ -140,7 +140,7 @@ export class PuppeteerService {
       await page.setViewport({
         width,
         height,
-        deviceScaleFactor: 2, // Render at 2x resolution (Retina) for sharper text/vectors
+        deviceScaleFactor: 1, // Changed from 2 to 1 for faster rendering (still good quality)
       });
 
       // Load HTML content
@@ -192,7 +192,7 @@ export class PuppeteerService {
         }, currentTime);
 
         // Small delay to let the DOM update
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 16)); // Reduced from 50ms to 16ms (1 frame at 60fps)
 
         const framePath = path.join(
           tempDir,

@@ -53,7 +53,7 @@ export class RenderVideoUseCase {
       configuration: {
         width,
         height,
-        fps: 60,
+        fps: 30, // Reduced from 60 to 30 for faster rendering
       },
     });
   }
