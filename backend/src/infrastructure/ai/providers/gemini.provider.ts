@@ -49,6 +49,19 @@ export class GeminiProvider implements AIProvider {
     }
   }
 
+  async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      const embeddingModel = this.genAI.getGenerativeModel({
+        model: 'text-embedding-004',
+      });
+      const result = await embeddingModel.embedContent(text);
+      return result.embedding.values;
+    } catch (error) {
+      console.error('[GeminiProvider] Error generating embedding:', error);
+      throw error;
+    }
+  }
+
   getProviderName(): string {
     return 'Google Gemini';
   }

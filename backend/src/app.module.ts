@@ -27,6 +27,8 @@ import { TranscriptionService } from './infrastructure/transcription/transcripti
 import { GenerateScriptAndAudioUseCase } from './application/use-cases/generate-script-and-audio.use-case';
 import { GenerateVideoFromScriptUseCase } from './application/use-cases/generate-video-from-script.use-case';
 import { RefineAnimationHtmlUseCase } from './application/use-cases/refine-animation-html.use-case';
+import { VectorStoreService } from './infrastructure/ai/vector-store/vector-store.service';
+import { AssetRetrievalAgent } from './infrastructure/ai/asset-retrieval.agent';
 
 @Module({
   imports: [
@@ -68,11 +70,13 @@ import { RefineAnimationHtmlUseCase } from './application/use-cases/refine-anima
     QueueService,
     ElevenLabsService,
     TranscriptionService,
+    VectorStoreService,
     // AI Agent
     VideoCreatorAgent,
     AnimationReviewAgent,
     QualityAssuranceAgent,
     ScriptGenerationAgent,
+    AssetRetrievalAgent,
     // Processors
     VideoRenderProcessor,
     VideoCreationProcessor,

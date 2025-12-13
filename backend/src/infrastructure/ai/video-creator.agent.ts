@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AIProvider } from './providers/ai-provider.interface';
 import { AIProviderFactory } from './providers/ai-provider.factory';
+import { AssetRetrievalAgent } from './asset-retrieval.agent';
 
 export interface VideoCreationResult {
   html: string;
@@ -11,8 +12,10 @@ export interface VideoCreationResult {
 export class VideoCreatorAgent {
   private aiProvider: AIProvider | null = null;
 
-  constructor() {
-    this.aiProvider = AIProviderFactory.createFromEnv();
+  constructor(private assetRetrievalAgent: AssetRetrievalAgent) {
+    this.aiProvider = AIProviderFactory.createFromEnv({
+      modelEnvVar: 'VIDEO_CREATOR_MODEL',
+    });
 
     if (this.aiProvider) {
       console.log(
@@ -39,6 +42,38 @@ export class VideoCreatorAgent {
       throw new Error('No AI provider configured');
     }
 
+    // Retrieve assets
+    let assetsContext = '';
+    try {
+      let query = userPrompt;
+      if (vtt) {
+        // Extract text from VTT to use as query
+        query = vtt
+          .replace(/WEBVTT/g, '')
+          .replace(
+            /(\d{2}:)?\d{2}:\d{2}\.\d{3} --> (\d{2}:)?\d{2}:\d{2}\.\d{3}/g,
+            '',
+          )
+          .replace(/\n+/g, ' ')
+          .trim();
+        if (!query) query = userPrompt;
+      }
+
+      // Use a primary color for the assets, e.g., #6C63FF (unDraw purple) or let the agent decide.
+      // For now, we pass undefined to let the agent use default or we can pass a color if we knew the palette.
+      const assets = await this.assetRetrievalAgent.retrieveAssets(query);
+      if (assets.length > 0) {
+        assetsContext = `\n\nASSETS PROVIDED:\nI have retrieved the following SVG assets that match the content. You MUST use them in your animation where appropriate. You can inline them or use them as needed.\n\n${assets
+          .map((svg, i) => `<!-- Asset ${i + 1} -->\n${svg}`)
+          .join('\n\n')}\n\n`;
+        console.log(
+          `[VideoCreatorAgent] Injected ${assets.length} assets into prompt`,
+        );
+      }
+    } catch (e) {
+      console.warn('[VideoCreatorAgent] Failed to retrieve assets:', e);
+    }
+
     try {
       const timingContext = vtt
         ? `\nContext - Timing (VTT):\nUse these timestamps to synchronize the animation events exactly with the voiceover. The VTT file contains the start and end times for each spoken segment. You MUST use these times to schedule your animations using the 'offset' parameter in anime.timeline().add().\n\nVTT Content:\n"${vtt}"\n`
@@ -53,6 +88,7 @@ export class VideoCreatorAgent {
 
 I want you to create an interactive, educational animation about: "${userPrompt}".
 ${timingContext}
+${assetsContext}
 Strict Technical Requirements:
 
 Format: A single HTML file containing all necessary CSS and JS.

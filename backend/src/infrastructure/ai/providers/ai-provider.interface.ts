@@ -6,6 +6,7 @@ export interface AIProviderConfig {
 
 export interface AIProvider {
   generateContent(prompt: string, imagePaths?: string[]): Promise<string>;
+  generateEmbedding?(text: string): Promise<number[]>;
   getProviderName(): string;
   getModelName(): string;
 }

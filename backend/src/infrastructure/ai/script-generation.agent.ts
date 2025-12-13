@@ -12,7 +12,9 @@ export class ScriptGenerationAgent {
   private aiProvider: AIProvider | null = null;
 
   constructor() {
-    this.aiProvider = AIProviderFactory.createFromEnv();
+    this.aiProvider = AIProviderFactory.createFromEnv({
+      modelEnvVar: 'VIDEO_CREATOR_MODEL',
+    });
 
     if (this.aiProvider) {
       console.log(
