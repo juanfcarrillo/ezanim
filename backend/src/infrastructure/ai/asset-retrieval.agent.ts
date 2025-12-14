@@ -17,10 +17,21 @@ export class AssetRetrievalAgent {
     console.log(`[AssetRetrievalAgent] Retrieving assets for: "${query}"`);
 
     try {
+      
+      // Optimizacion
+      let searchQuery = query;
+      if (this.aiProvider) {
+        const refined = await this.aiProvider.generateContent(
+          `Extract 3-5 keywords for searching illustrations about: "${query}". 
+           Return only comma-separated keywords, nothing else.`
+        );
+        searchQuery = refined.replace(/\n/g, ' ').trim();
+        console.log(`[AssetRetrievalAgent] Refined search query: "${searchQuery}"`);
+      }
       // 1. Search Vector Store directly with text
       // We let ChromaDB handle the embedding generation to ensure it matches
       // the dimensions of the stored vectors (likely 384 dims from all-MiniLM-L6-v2)
-      const results = await this.vectorStoreService.searchSimilar(query, 1);
+      const results = await this.vectorStoreService.searchSimilar(searchQuery, 3);
 
       if (!results || results.length === 0) {
         console.warn(`[AssetRetrievalAgent] No assets found for: "${query}"`);
