@@ -17,20 +17,21 @@ export class AssetRetrievalAgent {
     console.log(`[AssetRetrievalAgent] Retrieving assets for: "${query}"`);
 
     try {
-      
-      // Optimizacion
+      // Optimización: extraer keywords para mejor búsqueda RAG
       let searchQuery = query;
       if (this.aiProvider) {
-        const refined = await this.aiProvider.generateContent(
-          `Extract 3-5 keywords for searching illustrations about: "${query}". 
-           Return only comma-separated keywords, nothing else.`
-        );
-        searchQuery = refined.replace(/\n/g, ' ').trim();
-        console.log(`[AssetRetrievalAgent] Refined search query: "${searchQuery}"`);
+        try {
+          const refined = await this.aiProvider.generateContent(
+            `Extract 3-5 keywords for searching illustrations about: "${query}". 
+             Return only comma-separated keywords, nothing else.`,
+          );
+          searchQuery = refined.replace(/\n/g, ' ').trim();
+          console.log(`[AssetRetrievalAgent] Refined search query: "${searchQuery}"`);
+        } catch (e) {
+          console.warn('[AssetRetrievalAgent] Failed to refine query, using original');
+        }
       }
-      // 1. Search Vector Store directly with text
-      // We let ChromaDB handle the embedding generation to ensure it matches
-      // the dimensions of the stored vectors (likely 384 dims from all-MiniLM-L6-v2)
+
       const results = await this.vectorStoreService.searchSimilar(searchQuery, 3);
 
       if (!results || results.length === 0) {
@@ -38,26 +39,33 @@ export class AssetRetrievalAgent {
         return [];
       }
 
-      // 2. Process Results
-      const assets = results.map((metadata) => {
-        let svg = metadata.svgContent as string;
+      console.log(`[AssetRetrievalAgent] Found ${results.length} assets`);
 
-        if (color && svg) {
-          // Inject color style
+      const assets: string[] = [];
+
+      for (const metadata of results) {
+        let svg = metadata.svgContent as string;
+        if (!svg || !svg.includes('<svg')) continue;
+
+        // Limpiar caracteres de escape
+        svg = svg.replace(/\\\\/g, '').replace(/\\"/g, '"').replace(/\\n/g, '');
+
+        // Aplicar color si se proporciona
+        if (color) {
           if (svg.includes('style="')) {
             svg = svg.replace('style="', `style="color: ${color}; `);
           } else {
             svg = svg.replace('<svg', `<svg style="color: ${color}"`);
           }
-          svg = svg.replace('\\', '');
         }
-        return svg;
-      });
 
+        assets.push(svg);
+      }
+
+      console.log(`[AssetRetrievalAgent] Returning ${assets.length} assets`);
       return assets;
     } catch (error) {
       console.error('[AssetRetrievalAgent] Error retrieving assets:', error);
-      // Return empty array instead of failing, so the video creator can fallback to something else if needed
       return [];
     }
   }
