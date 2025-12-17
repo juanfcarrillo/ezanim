@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AIProvider } from './providers/ai-provider.interface';
 import { AIProviderFactory } from './providers/ai-provider.factory';
 import { AssetRetrievalAgent } from './asset-retrieval.agent';
-import { parse, stringify, INode } from 'svgson';
+import { parse, INode } from 'svgson';
 
 export type AspectRatio = '16:9' | '9:16' | '1:1';
 
@@ -10,6 +10,15 @@ export interface VideoCreationResult {
   html: string;
   criticalTimestamps: number[];
 }
+
+type SvgMeta = {
+  widthPx?: number;
+  heightPx?: number;
+  viewBox?: string;
+  intrinsicWidth?: number;
+  intrinsicHeight?: number;
+  intrinsicAspect?: number;
+};
 
 @Injectable()
 export class VideoCreatorAgent {
@@ -25,9 +34,7 @@ export class VideoCreatorAgent {
         `[VideoCreatorAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
       );
     } else {
-      console.warn(
-        '[VideoCreatorAgent] No AI provider configured, using mock mode',
-      );
+      console.warn('[VideoCreatorAgent] No AI provider configured, using mock mode');
     }
   }
 
@@ -45,8 +52,8 @@ export class VideoCreatorAgent {
       throw new Error('No AI provider configured');
     }
 
-    // Retrieve assets
     let assetsContext = '';
+    const maxWidth = this.getMaxSvgWidth(aspectRatio);
 
     try {
       let query = userPrompt;
@@ -65,58 +72,64 @@ export class VideoCreatorAgent {
       const assets = await this.assetRetrievalAgent.retrieveAssets(query);
 
       if (assets.length > 0) {
-        const maxWidth = this.getMaxSvgWidth(aspectRatio);
-        
-        // Convert SVGs to JSON using svgson
-        const svgJsonAssets = await Promise.all(
+        const enrichedAssets = await Promise.all(
           assets.map(async (svg, i) => {
             try {
-              const parsed = await parse(svg);
-              console.log(`[VideoCreatorAgent] parsed SVG: `, parsed);
+              const root = await parse(svg);
+              const meta = this.extractSvgMeta(root);
+
               return {
                 id: `asset-${i + 1}`,
-                json: parsed,
+                meta,
                 originalSvg: svg,
               };
             } catch (e) {
               console.warn(`[VideoCreatorAgent] Failed to parse SVG ${i + 1}:`, e);
               return null;
             }
-          })
+          }),
         );
 
-        const validAssets = svgJsonAssets.filter((a) => a !== null);
+        const validAssets = enrichedAssets.filter(
+          (a): a is NonNullable<typeof a> => a !== null,
+        );
 
         if (validAssets.length > 0) {
           assetsContext = `
-## SVG ASSETS (JSON FORMAT)
+## SVG ASSETS (USE ORIGINAL SVG + DIMENSIONS)
 
-You have ${validAssets.length} SVG assets in JSON format. To use them:
-1. Convert the JSON back to SVG string using the structure
-2. Wrap in a container div with class "svg-asset"
-
-Max width for this aspect ratio: ${maxWidth}px
+You have ${validAssets.length} SVG assets. Each includes extracted sizing metadata.
+Max recommended width for this aspect ratio: ${maxWidth}px
 
 ASSETS:
-${validAssets.map((asset) => `
-### Asset ${asset.id}
+${validAssets
+  .map(
+    (asset) => `
+### ${asset.id}
+
+Metadata (use for layout):
 \`\`\`json
-${JSON.stringify(asset.json, null, 2)}
+${JSON.stringify(asset.meta, null, 2)}
 \`\`\`
 
-Original SVG (for reference):
+SVG (use exactly this in HTML; do NOT remove viewBox):
 \`\`\`html
 <div id="${asset.id}" class="svg-asset">
 ${asset.originalSvg}
 </div>
 \`\`\`
-`).join('\n')}
+`,
+  )
+  .join('\n')}
 
-USAGE:
-- Use the original SVG wrapped in div with id and class as shown
-- Animate with: anime({ targets: '#asset-1', opacity: [0,1], duration: 800 })
+RULES:
+- Prefer sizing the container (.svg-asset) via CSS width/max-width.
+- Let the inner <svg> be width:100%; height:auto; (keep aspect ratio via viewBox).
+- Animate the wrapper div (opacity/transform) or inner svg parts if needed.
 `;
-          console.log(`[VideoCreatorAgent] Injected ${validAssets.length} assets as JSON into prompt`);
+          console.log(
+            `[VideoCreatorAgent] Injected ${validAssets.length} assets with metadata into prompt`,
+          );
         }
       }
     } catch (e) {
@@ -128,24 +141,22 @@ USAGE:
         ? `\nTIMING (VTT): Use these timestamps with anime.timeline offset.\n"${vtt}"\n`
         : '';
 
-      const scalingInstruction = aspectRatio === '9:16'
-        ? '\nCRITICAL: This is VERTICAL video. All text must be LARGE (2rem+ body, 3.5rem+ headings). Stack elements vertically.'
-        : aspectRatio === '1:1'
-        ? '\nThis is SQUARE video. Text: 1.5rem body, 2.5rem headings. Center everything.'
-        : '';
+      const scalingInstruction =
+        aspectRatio === '9:16'
+          ? '\nCRITICAL: This is VERTICAL video. All text must be LARGE (2rem+ body, 3.5rem+ headings). Stack elements vertically.'
+          : aspectRatio === '1:1'
+            ? '\nThis is SQUARE video. Text: 1.5rem body, 2.5rem headings. Center everything.'
+            : '';
 
       const systemPrompt = `Create an HTML animation about: "${userPrompt}"
 ${timingContext}
 ${assetsContext}
 
 ## REQUIREMENTS
-
 Single HTML file with Anime.js 3.2.1 (CDN), FontAwesome 6.4.0, Google Fonts (Poppins, Roboto).
-
 Aspect ratio: ${aspectRatio}${scalingInstruction}
 
 ## MANDATORY CSS
-
 \`\`\`css
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -164,19 +175,26 @@ html, body {
   overflow: hidden;
 }
 
-.svg-asset {
+/* IMPORTANT: do NOT animate .svg-wrap. It provides centering. */
+.svg-wrap {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  max-width: \${maxWidth}px;
-  width: 80%;
+  transform-origin: center center;
+}
+
+/* Animate this node instead */
+.svg-anim {
+  width: min(${maxWidth}px, 92vw);
   opacity: 0;
 }
 
-.svg-asset svg {
+.svg-anim svg {
   width: 100%;
   height: auto;
+  max-height: 78vh;
+  display: block;
 }
 
 .subtitle {
@@ -193,30 +211,18 @@ html, body {
 }
 \`\`\`
 
-## STRUCTURE
-
+## STRUCTURE RULE (MANDATORY)
+When inserting SVG assets, always use:
 \`\`\`html
-<!DOCTYPE html>
-<html>
-<head>
-  <!-- CRITICAL_TIMESTAMPS: [0, 2000, 5000] -->
-  <style>/* CSS */</style>
-</head>
-<body>
-  <div id="stage"><!-- content --></div>
-  <script>
-    const tl = anime.timeline({ autoplay: false });
-    // animations
-    window.tl = tl;
-  </script>
-</body>
-</html>
+<div id="asset-1" class="svg-wrap">
+  <div class="svg-anim">
+    <!-- inline SVG goes here -->
+  </div>
+</div>
 \`\`\`
 
-## RULES
-- NO play buttons or click-to-start overlays
-- Visual hook in first 3 seconds
-- Expose timeline as window.tl (autoplay: false)
+Animation rule:
+- Anime.js targets MUST be ".svg-anim" (or children), never ".svg-wrap".
 
 Return ONLY the HTML code.`;
 
@@ -229,7 +235,9 @@ Return ONLY the HTML code.`;
         html = html.replace(/^```\n?/, '').replace(/\n?```$/, '');
       }
 
-      const timestampMatch = html.match(/<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/);
+      const timestampMatch = html.match(
+        /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
+      );
       let criticalTimestamps: number[] = [0, duration * 1000];
       if (timestampMatch) {
         try {
@@ -247,12 +255,65 @@ Return ONLY the HTML code.`;
   }
 
   private getMaxSvgWidth(aspectRatio: AspectRatio): number {
+    // Valores pensados para que el SVG pueda verse "hero" en 1080p/1920p
     switch (aspectRatio) {
-      case '9:16': return 280;
-      case '1:1': return 350;
+      case '9:16':
+        return 900; // antes 280 (demasiado pequeño)
+      case '1:1':
+        return 900; // antes 350
       case '16:9':
-      default: return 450;
+      default:
+        return 1200; // antes 450
     }
+  }
+
+  private extractSvgMeta(root: INode): SvgMeta {
+    const attrs = (root?.attributes ?? {}) as Record<string, string | undefined>;
+
+    const widthPx = this.parseSvgLengthToPx(attrs.width);
+    const heightPx = this.parseSvgLengthToPx(attrs.height);
+    const viewBox = attrs.viewBox;
+
+    const vb = this.parseViewBox(viewBox);
+    const intrinsicWidth = vb?.w;
+    const intrinsicHeight = vb?.h;
+
+    const intrinsicAspect =
+      intrinsicWidth && intrinsicHeight && intrinsicHeight !== 0
+        ? intrinsicWidth / intrinsicHeight
+        : undefined;
+
+    return { widthPx, heightPx, viewBox, intrinsicWidth, intrinsicHeight, intrinsicAspect };
+  }
+
+  private parseSvgLengthToPx(value?: string): number | undefined {
+    if (!value) return undefined;
+    const v = value.trim().toLowerCase();
+
+    // "800" or "800px"
+    const m = v.match(/^([0-9.]+)\s*(px)?$/);
+    if (m) return Number(m[1]);
+
+    return undefined;
+  }
+
+  private parseViewBox(
+    viewBox?: string,
+  ): { x: number; y: number; w: number; h: number } | undefined {
+    if (!viewBox) return undefined;
+
+    const parts = viewBox
+      .trim()
+      .split(/[,\s]+/g)
+      .filter(Boolean)
+      .map((p) => Number(p));
+
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return undefined;
+
+    const [x, y, w, h] = parts;
+    if (w <= 0 || h <= 0) return undefined;
+
+    return { x, y, w, h };
   }
 
   async refineVideo(
