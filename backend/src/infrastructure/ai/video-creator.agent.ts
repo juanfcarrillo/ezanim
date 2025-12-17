@@ -72,6 +72,7 @@ export class VideoCreatorAgent {
           assets.map(async (svg, i) => {
             try {
               const parsed = await parse(svg);
+              console.log(`[VideoCreatorAgent] parsed SVG: `, parsed);
               return {
                 id: `asset-${i + 1}`,
                 json: parsed,

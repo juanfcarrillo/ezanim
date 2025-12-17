@@ -17,10 +17,11 @@ export class AssetRetrievalAgent {
     console.log(`[AssetRetrievalAgent] Retrieving assets for: "${query}"`);
 
     try {
-      // Optimización: extraer keywords para mejor búsqueda RAG
+      
       let searchQuery = query;
       if (this.aiProvider) {
         try {
+          // Optimización: extraer keywords para mejor búsqueda RAG
           const refined = await this.aiProvider.generateContent(
             `Extract 3-5 keywords for searching illustrations about: "${query}". 
              Return only comma-separated keywords, nothing else.`,
