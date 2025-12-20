@@ -223,7 +223,10 @@ When inserting SVG assets, always use:
 
 Animation rule:
 - Anime.js targets MUST be ".svg-anim" (or children), never ".svg-wrap".
-
+## JAVASCRIPT RULES (MANDATORY)
+1. Create a master timeline: \`var tl = anime.timeline({ autoplay: true });\`
+2. YOU MUST EXPOSE THE TIMELINE GLOBALLY: \`window.tl = tl;\`
+   (The renderer looks for window.tl to control playback. If missing, video generation fails.)
 Return ONLY the HTML code.`;
 
       const response = await this.aiProvider.generateContent(systemPrompt);
@@ -332,6 +335,7 @@ Return ONLY the HTML code.`;
 
 Keep working code intact. Output single HTML file with Anime.js.
 Preserve <!-- CRITICAL_TIMESTAMPS: [...] --> comment.
+ENSURE window.tl IS EXPOSED (window.tl = tl).
 
 Current HTML:
 ${currentHtml.substring(0, 50000)}
