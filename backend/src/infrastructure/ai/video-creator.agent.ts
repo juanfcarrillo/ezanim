@@ -1,27 +1,40 @@
 import { Injectable } from '@nestjs/common';
 import { AIProvider } from './providers/ai-provider.interface';
 import { AIProviderFactory } from './providers/ai-provider.factory';
+import { AssetRetrievalAgent } from './asset-retrieval.agent';
+import { parse, INode } from 'svgson';
+
+export type AspectRatio = '16:9' | '9:16' | '1:1';
 
 export interface VideoCreationResult {
   html: string;
   criticalTimestamps: number[];
 }
 
+type SvgMeta = {
+  widthPx?: number;
+  heightPx?: number;
+  viewBox?: string;
+  intrinsicWidth?: number;
+  intrinsicHeight?: number;
+  intrinsicAspect?: number;
+};
+
 @Injectable()
 export class VideoCreatorAgent {
   private aiProvider: AIProvider | null = null;
 
-  constructor() {
-    this.aiProvider = AIProviderFactory.createFromEnv();
+  constructor(private assetRetrievalAgent: AssetRetrievalAgent) {
+    this.aiProvider = AIProviderFactory.createFromEnv({
+      modelEnvVar: 'VIDEO_CREATOR_MODEL',
+    });
 
     if (this.aiProvider) {
       console.log(
         `[VideoCreatorAgent] Initialized with ${this.aiProvider.getProviderName()} - ${this.aiProvider.getModelName()}`,
       );
     } else {
-      console.warn(
-        '[VideoCreatorAgent] No AI provider configured, using mock mode',
-      );
+      console.warn('[VideoCreatorAgent] No AI provider configured, using mock mode');
     }
   }
 
@@ -29,7 +42,7 @@ export class VideoCreatorAgent {
     userPrompt: string,
     duration: number = 15,
     vtt?: string,
-    aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
+    aspectRatio: AspectRatio = '16:9',
   ): Promise<VideoCreationResult> {
     console.log(
       `[VideoCreatorAgent] Creating video for prompt: "${userPrompt}" with aspect ratio: ${aspectRatio}`,
@@ -39,97 +52,201 @@ export class VideoCreatorAgent {
       throw new Error('No AI provider configured');
     }
 
+    let assetsContext = '';
+    const maxWidth = this.getMaxSvgWidth(aspectRatio);
+
+    try {
+      let query = userPrompt;
+      if (vtt) {
+        query = vtt
+          .replace(/WEBVTT/g, '')
+          .replace(
+            /(\d{2}:)?\d{2}:\d{2}\.\d{3} --> (\d{2}:)?\d{2}:\d{2}\.\d{3}/g,
+            '',
+          )
+          .replace(/\n+/g, ' ')
+          .trim();
+        if (!query) query = userPrompt;
+      }
+
+      const assets = await this.assetRetrievalAgent.retrieveAssets(query);
+
+      if (assets.length > 0) {
+        const enrichedAssets = await Promise.all(
+          assets.map(async (svg, i) => {
+            try {
+              const root = await parse(svg);
+              const meta = this.extractSvgMeta(root);
+
+              return {
+                id: `asset-${i + 1}`,
+                meta,
+                originalSvg: svg,
+              };
+            } catch (e) {
+              console.warn(`[VideoCreatorAgent] Failed to parse SVG ${i + 1}:`, e);
+              return null;
+            }
+          }),
+        );
+
+        const validAssets = enrichedAssets.filter(
+          (a): a is NonNullable<typeof a> => a !== null,
+        );
+
+        if (validAssets.length > 0) {
+          assetsContext = `
+## SVG ASSETS (USE ORIGINAL SVG + DIMENSIONS)
+
+You have ${validAssets.length} SVG assets. Each includes extracted sizing metadata.
+Max recommended width for this aspect ratio: ${maxWidth}px
+
+ASSETS:
+${validAssets
+  .map(
+    (asset) => `
+### ${asset.id}
+
+Metadata (use for layout):
+\`\`\`json
+${JSON.stringify(asset.meta, null, 2)}
+\`\`\`
+
+SVG (use exactly this in HTML; do NOT remove viewBox):
+\`\`\`html
+<div id="${asset.id}" class="svg-asset">
+${asset.originalSvg}
+</div>
+\`\`\`
+`,
+  )
+  .join('\n')}
+
+RULES:
+- Prefer sizing the container (.svg-asset) via CSS width/max-width.
+- Let the inner <svg> be width:100%; height:auto; (keep aspect ratio via viewBox).
+- Animate the wrapper div (opacity/transform) or inner svg parts if needed.
+`;
+          console.log(
+            `[VideoCreatorAgent] Injected ${validAssets.length} assets with metadata into prompt`,
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('[VideoCreatorAgent] Failed to retrieve assets:', e);
+    }
+
     try {
       const timingContext = vtt
-        ? `\nContext - Timing (VTT):\nUse these timestamps to synchronize the animation events exactly with the voiceover. The VTT file contains the start and end times for each spoken segment. You MUST use these times to schedule your animations using the 'offset' parameter in anime.timeline().add().\n\nVTT Content:\n"${vtt}"\n`
+        ? `\nTIMING (VTT): Use these timestamps with anime.timeline offset.\n"${vtt}"\n`
         : '';
 
       const scalingInstruction =
         aspectRatio === '9:16'
-          ? '\n- CRITICAL FOR 9:16: Since this is a vertical video, all elements (text, icons, SVGs) must be SCALED UP significantly (2x-3x larger than desktop) to be legible on mobile screens. Use large font sizes (e.g., 3rem+ for headings) and fill the width of the screen.'
-          : '';
+          ? '\nCRITICAL: This is VERTICAL video. All text must be LARGE (2rem+ body, 3.5rem+ headings). Stack elements vertically.'
+          : aspectRatio === '1:1'
+            ? '\nThis is SQUARE video. Text: 1.5rem body, 2.5rem headings. Center everything.'
+            : '';
 
-      const systemPrompt = `Act as an expert frontend web developer and creative animator.
-
-I want you to create an interactive, educational animation about: "${userPrompt}".
+      const systemPrompt = `Create an HTML animation about: "${userPrompt}"
 ${timingContext}
-Strict Technical Requirements:
+${assetsContext}
 
-Format: A single HTML file containing all necessary CSS and JS.
+## REQUIREMENTS
+Single HTML file with Anime.js 3.2.1 (CDN), FontAwesome 6.4.0, Google Fonts (Poppins, Roboto).
+Aspect ratio: ${aspectRatio}${scalingInstruction}
 
-Libraries:
-- Use Anime.js (v3.2.1 via CDN) for all animations.
-- Use FontAwesome (v6.4.0 via CDN) for icons.
-- Use Google Fonts: Import 'Poppins' (weights 400, 600, 800) and 'Roboto' (400, 500) for professional typography.
-- Illustrations: Use detailed, multi-colored inline SVGs for main visuals. Avoid simple geometric shapes unless abstract.
+## MANDATORY CSS
+\`\`\`css
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-Visual Structure (Full Screen Cinematic):
-- The animation must occupy the entire viewport (100vw, 100vh).
-- The layout must be optimized for a **${aspectRatio}** aspect ratio.${scalingInstruction}
-- No visible video player controls (play button, progress bar, etc.) should be rendered.
-- CRITICAL: Do NOT include any "Click to Start", "Play", or "Start Learning" overlays, buttons, or splash screens. The video should be purely the animation content visible from the start.
-- Stage: The entire body is the stage. Use absolute positioning for elements relative to the viewport.
-- Subtitles: A clean, cinematic subtitle overlay at the bottom center, with a semi-transparent background for readability. Use 'Roboto' font.
-- Typography: Use 'Poppins' for headings and 'Roboto' for body text.
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Poppins', sans-serif;
+  background: #1a1a2e;
+}
 
-Animation Style & Visual Hooks (CRITICAL):
+#stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
 
-The first 3-5 seconds are the most important. You MUST include a "Visual Hook" at the very beginning (0ms - 3000ms) to captivate the viewer.
-Implement one or more of these specific hook techniques:
-- Explosive Transitions: Elements bursting into the scene or defying gravity.
-- Kinetic Typography: Text that animates dynamically (whooshes, explosions) to emphasize the topic.
-- Morphing Reveals: Mundane objects morphing into fantastical ones.
-- Scale Shocks: Dramatic zooms from micro to macro views.
-- Loop Teases: Hypnotic 1-2 second loops before the main narrative.
+/* IMPORTANT: do NOT animate .svg-wrap. It provides centering. */
+.svg-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+}
 
-General Animation Guidelines:
-- Use anime.timeline() to sequence the entire story.
-- Easing: Use 'easeOutExpo' for snappy entrances and 'easeInOutQuad' for smooth transitions. Avoid excessive bouncing unless playful.
-- Dynamic Entrances: Elements should slide in, scale up, or morph.
-- Micro-interactions: Use anime.stagger(100) to animate groups of elements (e.g., lists, particles) for a premium feel.
-- Colors: Use a professional color palette (e.g., Deep Blue & Vibrant Orange, or Dark Mode with Neon accents). Use CSS variables.
+/* Animate this node instead */
+.svg-anim {
+  width: min(${maxWidth}px, 92vw);
+  opacity: 0;
+}
 
-Animation Script (The Scenes):
-- Scene 1 (The Setup/Problem): Describe what elements fall in and what the initial state is.
-- Scene 2 (The Action/Process): Describe how the elements interact or transform.
-- Scene 3 (The Conclusion): Describe the final state or resolution.
+.svg-anim svg {
+  width: 100%;
+  height: auto;
+  max-height: 78vh;
+  display: block;
+}
 
-Code Logic:
-- Expose the timeline globally as 'window.tl' so it can be controlled externally.
-- IMPORTANT: Do NOT auto-play the timeline. It should wait for user interaction or external control.
-- CRITICAL: You MUST include a comment in the <head> section with a list of critical timestamps (in milliseconds) for the animation.
-  Format: <!-- CRITICAL_TIMESTAMPS: [0, 1500, 3000, 5000] -->
-  These timestamps should correspond to:
-  1. The start (0ms).
-  2. Key scene transitions.
-  3. Major element entrances/exits.
-  4. The final state.
+.subtitle {
+  position: fixed;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  padding: 0.5rem 1rem;
+  background: rgba(0,0,0,0.7);
+  border-radius: 8px;
+  color: white;
+  max-width: 90%;
+}
+\`\`\`
 
-The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML code, no markdown code blocks.`;
+## STRUCTURE RULE (MANDATORY)
+When inserting SVG assets, always use:
+\`\`\`html
+<div id="asset-1" class="svg-wrap">
+  <div class="svg-anim">
+    <!-- inline SVG goes here -->
+  </div>
+</div>
+\`\`\`
+
+Animation rule:
+- Anime.js targets MUST be ".svg-anim" (or children), never ".svg-wrap".
+## JAVASCRIPT RULES (MANDATORY)
+1. Create a master timeline: \`var tl = anime.timeline({ autoplay: true });\`
+2. YOU MUST EXPOSE THE TIMELINE GLOBALLY: \`window.tl = tl;\`
+   (The renderer looks for window.tl to control playback. If missing, video generation fails.)
+Return ONLY the HTML code.`;
 
       const response = await this.aiProvider.generateContent(systemPrompt);
 
-      // Clean up response if it contains markdown code blocks
       let html = response.trim();
       if (html.startsWith('```html')) {
-        html = html.replace(/^```html/, '').replace(/```$/, '');
+        html = html.replace(/^```html\n?/, '').replace(/\n?```$/, '');
       } else if (html.startsWith('```')) {
-        html = html.replace(/^```/, '').replace(/```$/, '');
+        html = html.replace(/^```\n?/, '').replace(/\n?```$/, '');
       }
 
-      // Parse timestamps
       const timestampMatch = html.match(
         /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
       );
-      let criticalTimestamps: number[] = [0, duration * 1000]; // Default fallback
+      let criticalTimestamps: number[] = [0, duration * 1000];
       if (timestampMatch) {
         try {
           criticalTimestamps = JSON.parse(timestampMatch[1]);
         } catch (e) {
-          console.warn(
-            '[VideoCreatorAgent] Failed to parse critical timestamps:',
-            e,
-          );
+          console.warn('[VideoCreatorAgent] Failed to parse timestamps:', e);
         }
       }
 
@@ -138,6 +255,68 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
       console.error('[VideoCreatorAgent] AI API error:', error);
       throw error;
     }
+  }
+
+  private getMaxSvgWidth(aspectRatio: AspectRatio): number {
+    // Valores pensados para que el SVG pueda verse "hero" en 1080p/1920p
+    switch (aspectRatio) {
+      case '9:16':
+        return 900; // antes 280 (demasiado pequeño)
+      case '1:1':
+        return 900; // antes 350
+      case '16:9':
+      default:
+        return 1200; // antes 450
+    }
+  }
+
+  private extractSvgMeta(root: INode): SvgMeta {
+    const attrs = (root?.attributes ?? {}) as Record<string, string | undefined>;
+
+    const widthPx = this.parseSvgLengthToPx(attrs.width);
+    const heightPx = this.parseSvgLengthToPx(attrs.height);
+    const viewBox = attrs.viewBox;
+
+    const vb = this.parseViewBox(viewBox);
+    const intrinsicWidth = vb?.w;
+    const intrinsicHeight = vb?.h;
+
+    const intrinsicAspect =
+      intrinsicWidth && intrinsicHeight && intrinsicHeight !== 0
+        ? intrinsicWidth / intrinsicHeight
+        : undefined;
+
+    return { widthPx, heightPx, viewBox, intrinsicWidth, intrinsicHeight, intrinsicAspect };
+  }
+
+  private parseSvgLengthToPx(value?: string): number | undefined {
+    if (!value) return undefined;
+    const v = value.trim().toLowerCase();
+
+    // "800" or "800px"
+    const m = v.match(/^([0-9.]+)\s*(px)?$/);
+    if (m) return Number(m[1]);
+
+    return undefined;
+  }
+
+  private parseViewBox(
+    viewBox?: string,
+  ): { x: number; y: number; w: number; h: number } | undefined {
+    if (!viewBox) return undefined;
+
+    const parts = viewBox
+      .trim()
+      .split(/[,\s]+/g)
+      .filter(Boolean)
+      .map((p) => Number(p));
+
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return undefined;
+
+    const [x, y, w, h] = parts;
+    if (w <= 0 || h <= 0) return undefined;
+
+    return { x, y, w, h };
   }
 
   async refineVideo(
@@ -151,57 +330,34 @@ The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML co
     }
 
     try {
-      const systemPrompt = `You are the same expert frontend developer.
-You previously generated an animation, but "The Critic" found some issues.
-
-Critique to Address:
+      const systemPrompt = `Fix these issues in the animation:
 "${critique}"
 
-Your Task:
-- Fix the issues mentioned in the critique.
-- Keep the rest of the code intact if it works well.
-- Ensure the final output is still a single, valid HTML file with Anime.js.
-- Ensure the <!-- CRITICAL_TIMESTAMPS: [...] --> comment is preserved or updated if the timing changes.
+Keep working code intact. Output single HTML file with Anime.js.
+Preserve <!-- CRITICAL_TIMESTAMPS: [...] --> comment.
+ENSURE window.tl IS EXPOSED (window.tl = tl).
 
-Current HTML Code:
+Current HTML:
 ${currentHtml.substring(0, 50000)}
 
-Return ONLY the corrected HTML code. Do not include any conversational text or explanations.`;
+Return ONLY the corrected HTML.`;
 
       const response = await this.aiProvider.generateContent(systemPrompt);
 
       let html = response.trim();
-
-      // Extract HTML from code block if present, handling text before/after
       const codeBlockMatch = html.match(/```html([\s\S]*?)```/);
       if (codeBlockMatch) {
         html = codeBlockMatch[1];
-      } else {
-        const genericMatch = html.match(/```([\s\S]*?)```/);
-        if (genericMatch) {
-          html = genericMatch[1];
-        }
       }
 
-      // Parse timestamps
-      const timestampMatch = html.match(
-        /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
-      );
+      const timestampMatch = html.match(/<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/);
       let criticalTimestamps: number[] = [];
       if (timestampMatch) {
         try {
           criticalTimestamps = JSON.parse(timestampMatch[1]);
-        } catch (e) {
-          console.warn(
-            '[VideoCreatorAgent] Failed to parse critical timestamps:',
-            e,
-          );
-        }
+        } catch (e) {}
       } else {
-        // Try to find them in the previous HTML if not present in new one (though LLM should include it)
-        const oldMatch = currentHtml.match(
-          /<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/,
-        );
+        const oldMatch = currentHtml.match(/<!-- CRITICAL_TIMESTAMPS: (\[.*?\]) -->/);
         if (oldMatch) {
           try {
             criticalTimestamps = JSON.parse(oldMatch[1]);

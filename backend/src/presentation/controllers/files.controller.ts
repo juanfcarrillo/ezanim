@@ -11,6 +11,10 @@ export class FilesController {
       throw new NotFoundException('Local storage not enabled');
     }
 
+    if (!fileKey) {
+      throw new NotFoundException('File path is required');
+    }
+
     const filePath = path.join(process.cwd(), 'storage', fileKey);
 
     if (!fs.existsSync(filePath)) {

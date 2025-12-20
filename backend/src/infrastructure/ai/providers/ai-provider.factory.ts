@@ -19,7 +19,7 @@ export class AIProviderFactory {
     }
   }
 
-  static createFromEnv(): AIProvider | null {
+  static createFromEnv(options?: { modelEnvVar?: string }): AIProvider | null {
     const provider = (process.env.AI_PROVIDER ||
       'gemini') as AIProviderConfig['provider'];
 
@@ -29,15 +29,21 @@ export class AIProviderFactory {
     switch (provider) {
       case 'gemini':
         apiKey = process.env.GEMINI_API_KEY;
-        model = process.env.GEMINI_MODEL;
+        model =
+          (options?.modelEnvVar && process.env[options.modelEnvVar]) ||
+          process.env.GEMINI_MODEL;
         break;
       case 'openai':
         apiKey = process.env.OPENAI_API_KEY;
-        model = process.env.OPENAI_MODEL;
+        model =
+          (options?.modelEnvVar && process.env[options.modelEnvVar]) ||
+          process.env.OPENAI_MODEL;
         break;
       case 'anthropic':
         apiKey = process.env.ANTHROPIC_API_KEY;
-        model = process.env.ANTHROPIC_MODEL;
+        model =
+          (options?.modelEnvVar && process.env[options.modelEnvVar]) ||
+          process.env.ANTHROPIC_MODEL;
         break;
     }
 
