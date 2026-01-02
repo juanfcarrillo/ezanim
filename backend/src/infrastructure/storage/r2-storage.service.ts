@@ -102,7 +102,7 @@ export class R2StorageService {
   async getPublicUrl(key: string): Promise<string> {
     if (process.env.STORAGE_DRIVER === 'local') {
       const baseUrl = process.env.APP_URL || 'http://localhost:3000';
-      return `${baseUrl}/files/${key}`;
+      return `${baseUrl}/poc/files/${key}`;
     }
 
     // If public URL is configured, use it

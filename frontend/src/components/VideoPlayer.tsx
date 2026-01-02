@@ -174,7 +174,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         // Play both animation and audio
         iframeRef.current.contentWindow.postMessage({ action: 'play' }, '*');
         if (audio) {
-          audio.play().catch(err => console.error('Audio play failed:', err));
+          audio.play().catch((err: unknown) => console.error('Audio play failed:', err));
         }
         setIsPlaying(true);
       }
@@ -189,7 +189,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       iframeRef.current.contentWindow.postMessage({ action: 'restart' }, '*');
       if (audio) {
         audio.currentTime = 0;
-        audio.play().catch(err => console.error('Audio play failed:', err));
+        audio.play().catch((err: unknown) => console.error('Audio play failed:', err));
       }
       setIsPlaying(true);
     }
