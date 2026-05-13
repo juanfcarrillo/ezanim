@@ -70,15 +70,14 @@ ANIMATION TECHNIQUES:
 - Slides: translateY: [-100, 0] or translateX: [-200, 0]
 - Scale: scale: [0, 1] for dramatic reveals
 - Rotations: rotate: ['0deg', '360deg'] for emphasis
-- Bounces: Use easeOutBounce for playful effects (duration: 1200-1500ms)
-- Springs: Use spring(1, 80, 10, 0) for elastic effects (duration: 800-1000ms)
+- Floating: slightly move up and down for a smooth effect
 
-EASING OPTIONS:
-- easeOutExpo: smooth, professional (duration: 800-1200ms)
-- easeInOutQuad: balanced (duration: 600-1000ms)
-- easeOutBounce: playful (duration: 1200-1500ms)
-- spring(1, 80, 10, 0): elastic (duration: 800-1000ms)
-- linear: for continuous motion (duration: 400-800ms)
+EASING OPTIONS (Focus on SMOOTHNESS):
+- easeInOutQuad: very smooth, balanced (duration: 800-1200ms)
+- easeOutSine: gentle deceleration (duration: 800-1200ms)
+- easeOutCubic: smooth but slightly more pronounced (duration: 800-1200ms)
+- linear: only for continuous background motion
+- Avoid "elastic" or "bounce" unless explicitly playful. Preferred style is elegant and fluid.
 
 EXAMPLE CALCULATION:
 Element 0: delay=0, duration=1200
@@ -92,7 +91,7 @@ Respond ONLY with valid JSON:
     {
       "index": 0,
       "duration": 1200,
-      "easing": "easeOutExpo",
+      "easing": "easeInOutQuad",
       "properties": {"opacity": [0, 1], "translateY": [-80, 0], "scale": [0.8, 1]},
       "delay": 0,
       "loop": false

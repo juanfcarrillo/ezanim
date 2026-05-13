@@ -259,7 +259,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <div className="glass video-player-wrapper">
         <div className="player-header">
           <h3>🎬 Video Preview</h3>
-          <p>HTML Animation with Anime.js</p>
+          <p>HTML Animation with GSAP</p>
         </div>
         
         <div className="player-center-stage">

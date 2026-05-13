@@ -41,7 +41,7 @@ export class VideoCreatorAgent {
 
     try {
       const timingContext = vtt
-        ? `\nContext - Timing (VTT):\nUse these timestamps to synchronize the animation events exactly with the voiceover. The VTT file contains the start and end times for each spoken segment. You MUST use these times to schedule your animations using the 'offset' parameter in anime.timeline().add().\n\nVTT Content:\n"${vtt}"\n`
+        ? `\nContext - Timing (VTT):\nUse these timestamps to synchronize the animation events exactly with the voiceover. The VTT file contains the start and end times for each spoken segment. You MUST use these times to schedule your animations in the GSAP timeline (e.g. tl.to(..., {..., position: timeInSeconds})).\n\nVTT Content:\n"${vtt}"\n`
         : '';
 
       const scalingInstruction =
@@ -58,45 +58,43 @@ Strict Technical Requirements:
 Format: A single HTML file containing all necessary CSS and JS.
 
 Libraries:
-- Use Anime.js (v3.2.1 via CDN) for all animations.
-- Use FontAwesome (v6.4.0 via CDN) for icons.
-- Use Google Fonts: Import 'Poppins' (weights 400, 600, 800) and 'Roboto' (400, 500) for professional typography.
-- Illustrations: Use detailed, multi-colored inline SVGs for main visuals. Avoid simple geometric shapes unless abstract.
+- Use GSAP (GreenSock) via CDN for all animations (include gsap.min.js and MotionPathPlugin.min.js).
+- Use Google Fonts: Import 'Inter' (weights 300, 400, 600) and 'JetBrains Mono' (400) for engineering-grade typography.
+- VISUALS: STRICTLY USE INLINE SVGs (\`<svg>\`, \`<path>\`, \`<circle>\`, etc.). Do NOT use standard emojis. We want an ultra-premium, "Vercel / Apple" minimalist architecture aesthetic. 
+- You can use motion paths (MotionPathPlugin) to move elements along complex paths.
 
-Visual Structure (Full Screen Cinematic):
+Visual Structure (Full Screen Cinematic Minimalist):
 - The animation must occupy the entire viewport (100vw, 100vh).
-- The layout must be optimized for a **${aspectRatio}** aspect ratio.${scalingInstruction}
-- No visible video player controls (play button, progress bar, etc.) should be rendered.
+- The layout must be optimized for a **\${aspectRatio}** aspect ratio.\${scalingInstruction}
+- No visible video player controls.
 - CRITICAL: Do NOT include any "Click to Start", "Play", or "Start Learning" overlays, buttons, or splash screens. The video should be purely the animation content visible from the start.
-- Stage: The entire body is the stage. Use absolute positioning for elements relative to the viewport.
-- Subtitles: A clean, cinematic subtitle overlay at the bottom center, with a semi-transparent background for readability. Use 'Roboto' font.
-- Typography: Use 'Poppins' for headings and 'Roboto' for body text.
+- Stage: Create a global \`<svg>\` that acts as the background/canvas. Implement a very subtle, fine-lined grid background (e.g., stroke="#222" stroke-width="0.5") to simulate an engineering blueprint or canvas.
+- Structure: Draw orthogonal lines (circuit-board style) or perfect Bezier curves to connect clean, minimalist nodes (perfect circles or slightly rounded rectangles).
+- Subtitles: A sleek, highly legible subtitle overlay at the bottom center, using dark semi-transparent background and 'Inter' font.
+- Typography: Use 'Inter' for main headings/text, and 'JetBrains Mono' for labels, IDs, data packets, or "code-like" annotations.
 
 Animation Style & Visual Hooks (CRITICAL):
 
 The first 3-5 seconds are the most important. You MUST include a "Visual Hook" at the very beginning (0ms - 3000ms) to captivate the viewer.
-Implement one or more of these specific hook techniques:
-- Explosive Transitions: Elements bursting into the scene or defying gravity.
-- Kinetic Typography: Text that animates dynamically (whooshes, explosions) to emphasize the topic.
-- Morphing Reveals: Mundane objects morphing into fantastical ones.
-- Scale Shocks: Dramatic zooms from micro to macro views.
-- Loop Teases: Hypnotic 1-2 second loops before the main narrative.
+Implement one or more of these specific hook techniques using GSAP:
+- SVG Blueprint Drawing: Use \`stroke-dasharray\` and \`stroke-dashoffset\` to precisely draw the architectural lines and nodes.
+- Data Pulses: Small glowing dots (\`<circle>\` with filter drop-shadow) traveling along the SVG paths at high speeds to simulate data flow.
+- Terminal Typewriter: Text appearing letter by letter rapidly, styled with 'JetBrains Mono'.
 
 General Animation Guidelines:
-- Use anime.timeline() to sequence the entire story.
-- Easing: Use 'easeOutExpo' for snappy entrances and 'easeInOutQuad' for smooth transitions. Avoid excessive bouncing unless playful.
-- Dynamic Entrances: Elements should slide in, scale up, or morph.
-- Micro-interactions: Use anime.stagger(100) to animate groups of elements (e.g., lists, particles) for a premium feel.
-- Colors: Use a professional color palette (e.g., Deep Blue & Vibrant Orange, or Dark Mode with Neon accents). Use CSS variables.
+- Use \`gsap.timeline()\` to sequence the entire story.
+- Easing: STRICTLY use 'expo.inOut' or 'power4.inOut' for machine-like precision. Movements should start slow, accelerate rapidly, and brake sharply but smoothly. DO NOT use bouncy easings (no 'back.out' or 'elastic').
+- Dynamic Entrances: Elements should draw themselves or slide in with surgical precision.
+- Colors: Use an **Ultra-Minimalist Dark Theme**. Deep space/asphalt background (\`#0A0A0A\`), high-contrast white/light gray text, subtle fine grid lines (\`#222\`), and minimal bright accents (cyan, neon green, or white glow) ONLY for active nodes or data pulses. Use CSS variables.
 
 Animation Script (The Scenes):
-- Scene 1 (The Setup/Problem): Describe what elements fall in and what the initial state is.
-- Scene 2 (The Action/Process): Describe how the elements interact or transform.
-- Scene 3 (The Conclusion): Describe the final state or resolution.
+- Scene 1 (The Architecture/Setup): Describe the grid and base nodes drawing themselves.
+- Scene 2 (The Data Flow/Process): Describe the data pulses and connections activating.
+- Scene 3 (The System Output/Conclusion): Describe the final stable state of the system.
 
 Code Logic:
-- Expose the timeline globally as 'window.tl' so it can be controlled externally.
-- IMPORTANT: Do NOT auto-play the timeline. It should wait for user interaction or external control.
+- Expose the timeline globally as 'window.tl' so it can be controlled externally. Example: \`window.tl = gsap.timeline({ paused: true });\`
+- IMPORTANT: Do NOT auto-play the timeline. It MUST start paused (\`paused: true\`).
 - CRITICAL: You MUST include a comment in the <head> section with a list of critical timestamps (in milliseconds) for the animation.
   Format: <!-- CRITICAL_TIMESTAMPS: [0, 1500, 3000, 5000] -->
   These timestamps should correspond to:
@@ -105,7 +103,7 @@ Code Logic:
   3. Major element entrances/exits.
   4. The final state.
 
-The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML code, no markdown code blocks.`;
+The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML code, no markdown code blocks.\`;
 
       const response = await this.aiProvider.generateContent(systemPrompt);
 
@@ -160,7 +158,7 @@ Critique to Address:
 Your Task:
 - Fix the issues mentioned in the critique.
 - Keep the rest of the code intact if it works well.
-- Ensure the final output is still a single, valid HTML file with Anime.js.
+- Ensure the final output is still a single, valid HTML file with GSAP.
 - Ensure the <!-- CRITICAL_TIMESTAMPS: [...] --> comment is preserved or updated if the timing changes.
 
 Current HTML Code:
