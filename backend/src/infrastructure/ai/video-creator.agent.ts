@@ -103,7 +103,7 @@ Code Logic:
   3. Major element entrances/exits.
   4. The final state.
 
-The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML code, no markdown code blocks.\`;
+The code must be complete, copy-pasteable, and runnable. Return ONLY the HTML code, no markdown code blocks.`;
 
       const response = await this.aiProvider.generateContent(systemPrompt);
 
